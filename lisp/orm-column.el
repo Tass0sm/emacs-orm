@@ -25,17 +25,10 @@
 	 (when (oref column not-null) '(:not-null)))))
 
 (defun orm-column--fk-constraint (name fk)
-  (pcase-let* ((`(:references ,table ,id) fk)
+  (pcase-let* ((`(quote (:references ,table ,id)) fk)
 	       (table-name (orm-table-name table))
 	       (table-key (or (orm-table-primary-key table) [id])))
     (list :foreign-key (vector name) :references table-name table-key)))
-
-(cl-defmethod orm-column-table-constraint ((column orm-column))
-  (let ((name (oref column :name))
-	(fk (oref column :foreign-key)))
-    (cond
-     (fk (orm-column--fk-constraint name fk))
-     (t nil))))
 
 ;; For macros
 
@@ -47,6 +40,12 @@
 				       :type :documentation
 				       :custom :label
 				       :group :printer))))
+
+(defun orm-column--table-constraint-from-spec (sname soptions)
+  (let ((fk (plist-get soptions :foreign-key)))
+    (cond
+     (fk (orm-column--fk-constraint sname fk))
+     (t nil))))
 
 (defun orm-column--form-from-spec (sname soptions)
   `(orm-column :name (quote ,sname)
