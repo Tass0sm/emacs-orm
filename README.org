@@ -10,3 +10,12 @@
 	  :documentation
 	  "Person class with correspondence to a table named people")
 #+end_src
+
+* installation
+
+#+begin_src emacs-lisp
+(use-package orm
+  :load-path (lambda () (expand-file-name "lisp"))
+  :ensure nil)
+#+end_src
+

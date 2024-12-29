@@ -6,6 +6,7 @@
 (require 'orm-assoc)
 (require 'orm-db-connection)
 (require 'orm-macros)
+(require 's)
 
 ;; Static Utils
 
@@ -23,14 +24,14 @@
 (cl-defmethod orm-count ((table (subclass orm-table)))
   "Count rows of class table in database."
   (let ((conn orm-default-conn)
-	(table (orm-table-name table)))
+        (table (orm-table-name table)))
     (emacsql conn [:select (funcall count *) :from $i1] table)))
 
 (cl-defmethod orm-create ((table (subclass orm-table)))
   "Create table for object class in database."
   (let ((conn orm-default-conn)
-	(table (orm-table-name table))
-	(schema (orm-table-schema table)))
+        (table (orm-table-name table))
+        (schema (orm-table-schema table)))
     (emacsql-with-transaction conn
       (emacsql conn [:create-table $i1 $S2] table schema))))
 
@@ -39,20 +40,20 @@
 (cl-defmethod orm--object-values ((this orm-table))
   "Get values vector for object"
   (let* ((class (class-of this))
-	 (column-names (orm-column-names class)))
+         (column-names (orm-column-names class)))
     (apply 'vector
-	   (cl-loop for slot in column-names
-		    collect (if (slot-boundp this slot)
-				(slot-value this slot)
-			      nil)))))
+           (cl-loop for slot in column-names
+                    collect (if (slot-boundp this slot)
+                                (slot-value this slot)
+                              nil)))))
 
 ;; Insert
 
 (cl-defmethod orm-insert ((this orm-table))
   "Insert object into database."
   (let ((conn orm-default-conn)
-	(table-name (orm-table-name this))
-	(values (orm--object-values this)))
+        (table-name (orm-table-name this))
+        (values (orm--object-values this)))
     (emacsql-with-transaction conn
       (emacsql conn [:insert :into $i1 :values $v2] table-name values))))
 

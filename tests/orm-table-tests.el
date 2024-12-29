@@ -9,14 +9,14 @@
 
   ;; Simple
   (should (equal
-	   (orm-table-schema author)
-	   '([(name :primary-key :not-null) (age)])))
+           (orm-table-schema author)
+           '([(name :primary-key :not-null) (age)])))
 
   ;; With belongs-to association
   (should (equal
-	   (orm-table-schema book)
-	   '([(title :primary-key :not-null) (writer)]
-	     (:foreign-key [writer] :references authors [name])))))
+           (orm-table-schema book)
+           '([(title :primary-key :not-null) (writer)]
+             (:foreign-key [writer] :references authors [name])))))
 
 (ert-deftest orm-table-name ()
   "Tests orm-table-name"

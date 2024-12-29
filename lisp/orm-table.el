@@ -6,29 +6,29 @@
 
 (defclass orm-table ()
   ((table-name :initarg :table
-	       :type symbol
-	       :accessor orm-table-name
-	       :allocation :class
-	       :documentation
-	       "The relation/table in which instances of this object are saved.")
+               :type symbol
+               :accessor orm-table-name
+               :allocation :class
+               :documentation
+               "The relation/table in which instances of this object are saved.")
    (columns :initarg :columns
-	    :type list
-	    :accessor orm-table-columns
-	    :allocation :class
-	    :documentation
-	    "A list of column specifications.")
+            :type list
+            :accessor orm-table-columns
+            :allocation :class
+            :documentation
+            "A list of column specifications.")
    (associations :initarg :associations
-		 :type list
-		 :accessor orm-table-associations
-		 :allocation :class
-		 :documentation
-		 "A list of association objects.")
+                 :type list
+                 :accessor orm-table-associations
+                 :allocation :class
+                 :documentation
+                 "A list of association objects.")
    (table-constraints :initarg :table-constraints
-		      :type list
-		      :accessor orm-table-constraints
-		      :allocation :class
-		      :documentation
-		      "A list of table constraints."))
+                      :type list
+                      :accessor orm-table-constraints
+                      :allocation :class
+                      :documentation
+                      "A list of table constraints."))
   :documentation
   "This special class enables persistence through a database."
   :abstract t)
@@ -44,8 +44,8 @@
 (cl-defmethod orm-table-primary-key ((table (subclass orm-table)))
   "Get class column names"
   (let* ((obj (make-instance table))
-	 (cols (orm-table-columns obj))
-	 (pk-cols (-filter (lambda (x) (oref x primary-key)) cols)))
+         (cols (orm-table-columns obj))
+         (pk-cols (-filter (lambda (x) (oref x primary-key)) cols)))
     (when-let ((names (mapcar (lambda (x) (oref x name)) pk-cols)))
       (apply 'vector names))))
 
@@ -61,9 +61,9 @@
   "Get schema for table which is made up of a vector of column constraints,
 and table constraints"
   (let* ((table (make-instance table))
-	 (cols (orm-table-columns table))
-	 (col-constraints (orm-table--column-constraints cols))
-	 (table-constraints (orm-table-constraints table)))
+         (cols (orm-table-columns table))
+         (col-constraints (orm-table--column-constraints cols))
+         (table-constraints (orm-table-constraints table)))
     (cons col-constraints table-constraints)))
 
 (provide 'orm-table)

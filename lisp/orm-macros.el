@@ -16,18 +16,18 @@
             (cons :documentation options-and-doc)))
 
   (orm--filter-plist options-and-doc
-		     (list :documentation
-			   :allow-nil-initform
-			   :custom-groups
-			   :abstract
-			   :method-invocation-order)))
+                     (list :documentation
+                           :allow-nil-initform
+                           :custom-groups
+                           :abstract
+                           :method-invocation-order)))
 
 (defmacro deftable (name mixins column-specs &rest options-and-doc)
   "Define a table, which is a class that maps to a relation."
   (let ((table-name (or (plist-get options-and-doc :table) name))
-	(assoc-specs (plist-get options-and-doc :associations))
-	(table-constraints (plist-get options-and-doc :constraints))
-	slots columns assocs)
+        (assoc-specs (plist-get options-and-doc :associations))
+        (table-constraints (plist-get options-and-doc :constraints))
+        slots columns assocs)
     (pcase-dolist (`(,sname . ,soptions) column-specs)
       (push (orm-column--get-slot-spec sname soptions) slots)
       (push (orm-column--form-from-spec sname soptions) columns)
@@ -37,22 +37,22 @@
       (push (orm-assoc--form-from-spec type class options) assocs)
 
       (when-let ((col-spec (orm-assoc--get-self-column type class options)))
-	(pcase-let ((`(,sname . ,soptions) col-spec))
-	  (push (orm-column--get-slot-spec sname soptions) slots)
-	  (push (orm-column--form-from-spec sname soptions) columns)
-	  (push (orm-column--table-constraint-from-spec sname soptions) table-constraints))))
+        (pcase-let ((`(,sname . ,soptions) col-spec))
+          (push (orm-column--get-slot-spec sname soptions) slots)
+          (push (orm-column--form-from-spec sname soptions) columns)
+          (push (orm-column--table-constraint-from-spec sname soptions) table-constraints))))
 
     `(defclass ,name (orm-table ,@mixins)
        (,@(nreverse slots)
 
-	(table-name
-	 :initform (quote ,table-name))
-	(columns
-	 :initform (list ,@(nreverse columns)))
-	(associations
-	 :initform (list ,@(nreverse assocs)))
-	(table-constraints
-	 :initform (quote ,(-non-nil (nreverse table-constraints)))))
+        (table-name
+         :initform (quote ,table-name))
+        (columns
+         :initform (list ,@(nreverse columns)))
+        (associations
+         :initform (list ,@(nreverse assocs)))
+        (table-constraints
+         :initform (quote ,(-non-nil (nreverse table-constraints)))))
 
        ,@(orm--filter-options-and-doc options-and-doc))))
 
