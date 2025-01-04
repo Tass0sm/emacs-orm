@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 (require 'orm-column)
 (require 'orm-table)
 (require 'orm-assoc)
@@ -36,7 +38,7 @@
     (pcase-dolist (`(,type ,class . ,options) assoc-specs)
       (push (orm-assoc--form-from-spec type class options) assocs)
 
-      (when-let ((col-spec (orm-assoc--get-self-column type class options)))
+      (when-let* ((col-spec (orm-assoc--get-self-column type class options)))
 	(pcase-let ((`(,sname . ,soptions) col-spec))
 	  (push (orm-column--get-slot-spec sname soptions) slots)
 	  (push (orm-column--form-from-spec sname soptions) columns)

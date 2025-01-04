@@ -46,7 +46,7 @@
   (let* ((obj (make-instance table))
 	 (cols (orm-table-columns obj))
 	 (pk-cols (-filter (lambda (x) (oref x primary-key)) cols)))
-    (when-let ((names (mapcar (lambda (x) (oref x name)) pk-cols)))
+    (when-let* ((names (mapcar (lambda (x) (oref x name)) pk-cols)))
       (apply 'vector names))))
 
 (cl-defmethod orm-table-primary-key ((table string))

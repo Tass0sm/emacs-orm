@@ -1,5 +1,4 @@
-;;; orm.el --- An object relational mapping for emacs lisp
-;; -*- coding: utf-8; lexical-binding: t; -*-
+;;; orm.el --- emacs lisp object relational mapping -*- lexical-binding: t; -*-
 
 (require 'orm-table)
 (require 'orm-column)
@@ -38,7 +37,7 @@
 
 (cl-defmethod orm--object-values ((this orm-table))
   "Get values vector for object"
-  (let* ((class (class-of this))
+  (let* ((class (eieio-object-class this))
 	 (column-names (orm-column-names class)))
     (apply 'vector
 	   (cl-loop for slot in column-names
