@@ -1,6 +1,7 @@
 ;;; orm.el --- An object relational mapping for emacs lisp
 ;; -*- coding: utf-8; lexical-binding: t; -*-
 
+(require 's)
 (require 'orm-table)
 (require 'orm-column)
 (require 'orm-assoc)
@@ -83,8 +84,24 @@
     (when record
       (orm--make-from-record table (car record)))))
 
-
 ;; Update - orm-update
+
+(defun orm-make-set-exprs (obj)
+  (let ((column-names (orm-column-names obj))
+	;; Convert values vector to list
+	(values (append (orm--object-values obj) nil)))
+    (apply 'vector (-zip-with (lambda (x y) (list '= x y)) column-names values))))
+
+(cl-defmethod orm-update ((this orm-table))
+  "Update object in database."
+  (let* ((conn orm-default-conn)
+	 (table-name (orm-table-name this))
+	 (primary-key (aref (orm-table-primary-key (class-of this)) 0))
+	 (primary-key-value (slot-value this primary-key)))
+    (emacsql-with-transaction conn
+      (emacsql conn (vector :update '$i1 :set (orm-make-set-exprs this) :where (list '= '$i2 primary-key-value))
+	       table-name primary-key))))
+
 ;; Delete - orm-delete
 
 (provide 'orm)

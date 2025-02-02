@@ -33,6 +33,9 @@
   "This special class enables persistence through a database."
   :abstract t)
 
+(cl-defmethod orm-ref ((this orm-table) key)
+  (-map (lambda (k) (slot-value this k)) key))
+
 (cl-defmethod orm-table-name ((table (subclass orm-table)))
   "Get class table name"
   (orm-table-name (make-instance table)))
@@ -42,7 +45,7 @@
   (intern table))
 
 (cl-defmethod orm-table-primary-key ((table (subclass orm-table)))
-  "Get class column names"
+  "Get class primary key name"
   (let* ((obj (make-instance table))
 	 (cols (orm-table-columns obj))
 	 (pk-cols (-filter (lambda (x) (oref x primary-key)) cols)))
