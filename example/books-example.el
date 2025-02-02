@@ -24,6 +24,8 @@
 	  :associations
 	  ((:belongs_to author :foreign-key writer)))
 
+;; Create
+
 (orm-create book)
 (setq fountain-head (book :title "Fountain Head" :writer "Ayn Rand" :year 2000))
 (orm-insert fountain-head)
@@ -37,3 +39,7 @@
 
 (setf (oref fountain-head :year) 2002)
 (orm-update fountain-head)
+
+;; Delete
+
+(orm-delete fountain-head)

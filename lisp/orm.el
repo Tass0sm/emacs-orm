@@ -104,4 +104,15 @@
 
 ;; Delete - orm-delete
 
+(cl-defmethod orm-delete ((this orm-table))
+  "Update object in database."
+  (let* ((conn orm-default-conn)
+	 (table-name (orm-table-name this))
+	 (primary-key (aref (orm-table-primary-key (class-of this)) 0))
+	 (primary-key-value (slot-value this primary-key)))
+    (emacsql-with-transaction conn
+      (emacsql conn (vector :delete-from '$i1 :where (list '= '$i2 primary-key-value))
+	       table-name primary-key))))
+
+
 (provide 'orm)
