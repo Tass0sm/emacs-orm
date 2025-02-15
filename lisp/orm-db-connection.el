@@ -14,6 +14,8 @@
     (:sql (emacsql-sqlite-builtin (oref db file)))
     (_ nil)))
 
+(defalias 'orm-disconnect 'emacsql-close)
+
 (defvar orm-default-db (orm-db :type :sql :file (expand-file-name "~/test.db")))
 (defvar orm-default-conn (orm-connect orm-default-db))
 

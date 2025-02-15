@@ -1,14 +1,14 @@
 #+title: ORM
 
 #+begin_src elisp
-(deftable person ()
-	  ((name :initarg :name
-		 :primary-key t
-		 :not-null t)
-	   (age  :initarg :age))
-	  :table people
-	  :documentation
-	  "Person class with correspondence to a table named people")
+  (deftable person ()
+	    ((name :initarg :name
+		   :primary-key t
+		   :not-null t)
+	     (age  :initarg :age))
+	    :table people
+	    :documentation
+	    "Person class with correspondence to a table named people")
 #+end_src
 
 * Summary
@@ -20,6 +20,7 @@ class correspond to columns in the table.
 * Features
 ** Create, Read, Update, Delete (CRUD) Methods
 *** orm-insert
-*** TODO orm-find
-*** TODO orm-update
-*** TODO orm-delete
+*** orm-find
+*** orm-update
+**** TODO multi-key
+*** orm-delete

@@ -1,7 +1,6 @@
 ;;; orm.el --- An object relational mapping for emacs lisp
 ;; -*- coding: utf-8; lexical-binding: t; -*-
 
-(require 's)
 (require 'orm-table)
 (require 'orm-column)
 (require 'orm-assoc)
@@ -20,7 +19,7 @@
   (orm-column-names (make-instance table)))
 
 (defun symbol-to-keyword (sym)
-  (intern-soft (s-prepend ":" (symbol-name sym))))
+  (intern-soft (concat ":" (symbol-name sym))))
 
 ;; Static Methods
 
@@ -28,7 +27,7 @@
   "Count rows of class table in database."
   (let ((conn orm-default-conn)
 	(table (orm-table-name table)))
-    (emacsql conn [:select (funcall count *) :from $i1] table)))
+    (caar (emacsql conn [:select (funcall count *) :from $i1] table))))
 
 (cl-defmethod orm-create ((table (subclass orm-table)))
   "Create table for object class in database."
@@ -37,6 +36,14 @@
 	(schema (orm-table-schema table)))
     (emacsql-with-transaction conn
       (emacsql conn [:create-table $i1 $S2] table schema))))
+
+(cl-defmethod orm-drop ((table (subclass orm-table)))
+  "Create table for object class in database."
+  (let ((conn orm-default-conn)
+	(table (orm-table-name table)))
+    (emacsql-with-transaction conn
+      (emacsql conn [:drop-table $i1] table))))
+
 
 ;; Instance Utils
 

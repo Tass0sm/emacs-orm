@@ -9,6 +9,8 @@
 		 :not-null t))
 	  :table authors)
 
+(orm-drop author)
+
 (orm-create author)
 (setq ayn-rand (author :name "Ayn Rand"))
 (orm-insert ayn-rand)

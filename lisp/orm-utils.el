@@ -1,5 +1,6 @@
 ;;; -*- lexical-binding: t; -*-
 
+(require 'generator)
 (require 'cl-lib)
 
 (iter-defun orm--by-two (l)
@@ -9,7 +10,7 @@
     (setq l (cddr l))))
 
 (defun orm--filter-plist (plist keys)
-  (apply '-concat
+  (apply 'append
 	 (cl-loop for x iter-by (orm--by-two plist)
 		  if (member (car x) keys)
 		  collect x)))

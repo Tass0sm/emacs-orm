@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 
-(require 'dash)
+(require 'cl-lib)
 (require 'eieio)
 (require 'emacsql)
 
@@ -34,7 +34,7 @@
   :abstract t)
 
 (cl-defmethod orm-ref ((this orm-table) key)
-  (-map (lambda (k) (slot-value this k)) key))
+  (mapcar (lambda (k) (slot-value this k)) key))
 
 (cl-defmethod orm-table-name ((table (subclass orm-table)))
   "Get class table name"
@@ -48,7 +48,7 @@
   "Get class primary key name"
   (let* ((obj (make-instance table))
 	 (cols (orm-table-columns obj))
-	 (pk-cols (-filter (lambda (x) (oref x primary-key)) cols)))
+	 (pk-cols (cl-remove-if-not (lambda (x) (oref x primary-key)) cols)))
     (when-let ((names (mapcar (lambda (x) (oref x name)) pk-cols)))
       (apply 'vector names))))
 

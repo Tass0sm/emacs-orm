@@ -1,3 +1,5 @@
+(require 'cl-lib)
+
 (require 'orm-column)
 (require 'orm-table)
 (require 'orm-assoc)
@@ -52,7 +54,7 @@
 	(associations
 	 :initform (list ,@(nreverse assocs)))
 	(table-constraints
-	 :initform (quote ,(-non-nil (nreverse table-constraints)))))
+	 :initform (quote ,(cl-remove-if 'null (nreverse table-constraints)))))
 
        ,@(orm--filter-options-and-doc options-and-doc))))
 
