@@ -71,8 +71,12 @@
 
 ;; Read - orm-all, orm-first
 
+(defun orm--interleave (l1 l2)
+  (when (and l1 l2)
+    (cons (car l1) (cons (car l2) (orm--interleave (cdr l1) (cdr l2))))))
+
 (cl-defmethod orm--make-from-record ((table (subclass orm-table)) record)
-  (apply 'make-instance (cons table (-interleave (-map 'symbol-to-keyword (orm-column-names table)) record))))
+  (apply 'make-instance (cons table (orm--interleave (mapcar 'symbol-to-keyword (orm-column-names table)) record))))
 
 (cl-defmethod orm-all ((table (subclass orm-table)))
   "Select from table for class in database."
@@ -90,6 +94,17 @@
 		   (emacsql conn [:select :* :from $S1 :asc :limit $s2] (vector table-name) 1))))
     (when record
       (orm--make-from-record table (car record)))))
+
+(cl-defmethod orm-find ((table (subclass orm-table)) id)
+  "Update object in database."
+  (let* ((conn orm-default-conn)
+	 (table-name (orm-table-name table))
+	 (primary-key (aref (orm-table-primary-key table) 0))
+	 (record (car (emacsql-with-transaction conn
+			(emacsql conn (vector :select :* :from '$S1 :where (list '= '$i2 id) :limit '$s3)
+				 (vector table-name) primary-key 1)))))
+    (when record
+      (orm--make-from-record table record))))
 
 ;; Update - orm-update
 
