@@ -13,6 +13,11 @@
   "If table is a subclass of orm-table and therefore a table-mapped class"
   (child-of-class-p table orm-table))
 
+(cl-defmethod orm-primary-key ((table orm-table))
+  "Get primary key of orm-table object instance TABLE"
+  (let ((table-primary-key (aref (orm-table-primary-key (type-of table)) 0)))
+    (slot-value table table-primary-key)))
+
 (cl-defmethod orm-column-names ((table orm-table))
   "Get table column names"
   (let* ((cols (orm-table-columns table)))
@@ -23,7 +28,7 @@
   (orm-column-names (make-instance table)))
 
 (defun orm--symbol-to-keyword (sym)
-  (intern-soft (concat ":" (symbol-name sym))))
+  (intern (concat ":" (symbol-name sym))))
 
 ;; Static Methods
 
@@ -44,7 +49,7 @@
 (cl-defmethod orm-created-p ((table (subclass orm-table)))
   "Is table for object class in SQLITE database?"
   (let ((conn orm-default-conn)
-	(table-name (orm-table-name table)))
+	(table-name (intern (replace-regexp-in-string "-" "_" (symbol-name (orm-table-name table))))))
     (emacsql-with-transaction conn
       (emacsql conn [:select 1 :from 'sqlite_master :where (= name $s1)] table-name))))
 
@@ -58,6 +63,12 @@
 
 ;; Instance Utils
 
+(defun orm--slot-value (obj slot)
+  (let ((v (slot-value obj slot)))
+    (if (eieio-object-p v)
+        (orm-primary-key v)
+      v)))
+
 (cl-defmethod orm--object-values ((obj orm-table))
   "Get values vector for object"
   (let* ((class (class-of obj))
@@ -65,20 +76,25 @@
     (apply 'vector
 	   (cl-loop for slot in column-names
 		    collect (if (slot-boundp obj slot)
-				(slot-value obj slot)
+				(orm--slot-value obj slot)
 			      nil)))))
 
 ;; CRUD
 
 ;; Create - orm-insert
 
-(cl-defmethod orm-insert ((obj orm-table))
+(cl-defmethod orm-insert ((obj orm-table) &key (skip-assocs nil))
   "Insert object into database."
   (let ((conn orm-default-conn)
 	(table-name (orm-table-name obj))
 	(values (orm--object-values obj)))
     (emacsql-with-transaction conn
-      (emacsql conn [:insert :into $i1 :values $v2] table-name values))))
+      (emacsql conn [:insert :into $i1 :values $v2] table-name values)
+
+      (unless skip-assocs
+        ;; Insert all that is associated with OBJ
+        (mapcar (lambda (assoc) (orm-assoc--insert-assoc conn obj assoc))
+                (orm-table-associations obj))))))
 
 ;; Read - orm-all, orm-first
 
@@ -87,7 +103,11 @@
     (cons (car l1) (cons (car l2) (orm--interleave (cdr l1) (cdr l2))))))
 
 (cl-defmethod orm--make-from-record ((table (subclass orm-table)) record)
-  (apply 'make-instance (cons table (orm--interleave (mapcar 'orm--symbol-to-keyword (orm-column-names table)) record))))
+  (let ((obj (apply 'make-instance (cons table (orm--interleave (mapcar 'orm--symbol-to-keyword (orm-column-names table)) record)))))
+    ;; (mapcar (lambda (assoc) (setf (slot-value obj (orm-assoc-name assoc))
+    ;;                               (orm-assoc--all obj assoc)))
+    ;;         (seq-remove 'orm-belongs-to-assoc-p (orm-table-associations obj)))
+    obj))
 
 (cl-defmethod orm-all ((table (subclass orm-table)))
   "Select all rows from orm class TABLE."
@@ -140,7 +160,7 @@
 	(values (append (orm--object-values obj) nil)))
     (apply 'vector (orm--zip-with-set-exprs column-names values))))
 
-(cl-defmethod orm-update ((obj orm-table))
+(cl-defmethod orm-update ((obj orm-table) &key (skip-assocs nil))
   "Update object in database."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name obj))
@@ -148,17 +168,22 @@
 	 (primary-key-value (slot-value obj primary-key)))
     (emacsql-with-transaction conn
       (emacsql conn (vector :update '$i1 :set (orm--make-set-exprs obj) :where (list '= '$i2 primary-key-value))
-	       table-name primary-key))))
+	       table-name primary-key)
 
-(cl-defmethod orm-insert-or-update ((obj orm-table))
+      (unless skip-assocs
+        ;; Update all that is associated with OBJ
+        (mapcar (lambda (assoc) (orm-assoc--update-assoc conn obj assoc))
+                (orm-table-associations obj))))))
+
+(cl-defmethod orm-insert-or-update ((obj orm-table) &key (skip-assocs nil))
   "Insert object in database or update if already present."
   (if (orm-present-p obj)
-      (orm-update obj)
-    (orm-insert obj)))
+      (orm-update obj :skip-assocs skip-assocs)
+    (orm-insert obj :skip-assocs skip-assocs)))
 
 ;; Delete - orm-delete
 
-(cl-defmethod orm-delete ((obj orm-table))
+(cl-defmethod orm-delete ((obj orm-table) &key (skip-assocs nil))
   "Delete object in database."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name obj))
@@ -166,7 +191,12 @@
 	 (primary-key-value (slot-value obj primary-key)))
     (emacsql-with-transaction conn
       (emacsql conn (vector :delete-from '$i1 :where (list '= '$i2 primary-key-value))
-	       table-name primary-key))))
+	       table-name primary-key)
+
+      (unless skip-assocs
+        ;; Handle deletion for all that is associated with "obj"
+        (mapcar (lambda (assoc) (orm-assoc--delete-assoc conn obj assoc))
+	        (orm-table-associations obj))))))
 
 
 (provide 'orm)

@@ -24,13 +24,15 @@
 		  :not-null t)
 	   (year :initarg :year))
 	  :associations
-	  ((:belongs_to author :foreign-key writer)))
+	  ((:belongs-to author :foreign-key writer)))
 
 ;; Create
 
 (orm-create book)
-(setq fountain-head (book :title "Fountain Head" :writer "Ayn Rand" :year 2000))
+(setq fountain-head (book :title "Fountain Head" :writer ayn-rand :year 2000))
 (orm-insert fountain-head)
+
+(orm-present-p fountain-head)
 
 ;; Read
 
@@ -47,3 +49,14 @@
 ;; Delete
 
 (orm-delete fountain-head)
+
+
+;; Associations
+
+(orm-table-associations fountain-head)
+
+(orm-assoc-get fountain-head 'authors)
+
+;; (orm-assoc-insert fountain-head 'author ayn-rand)
+
+(orm-assoc-present-p fountain-head 'authors ayn-rand)

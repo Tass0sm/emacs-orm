@@ -48,3 +48,41 @@ Update rows in the table.
 Delete rows from the table
 
 : (orm-delete (obj orm-table))
+
+** Associations
+
+Define =belongs-to=, =has-many=, and =has-and-belongs-to-many= associations
+between table-mapped objects.
+
+: (defassoc table1 type table2 &rest options)
+
+The above operations when applied to objects with associations will respect
+those associations and keep the database up-to-date with the association data
+included in the objects. There are also a separate set of operations
+specifically for dealing with associations.
+
+Get an association by name.
+
+: (orm-assoc-get (table (subclass orm-table)) association-name)
+: (orm-assoc-get (obj orm-table) association-name)
+
+Create new rows in the association.
+
+: (orm-assoc-insert (obj1 orm-table) association-name (obj2 orm-table))
+
+Check for and read rows from the association.
+
+: (orm-assoc-present-p (obj1 orm-table) association-name (obj2 orm-table))
+: (orm-assoc-first (obj orm-table) association-name)
+: (orm-assoc-all (obj orm-table) association-name)
+: (orm-assoc-find (obj orm-table) association-name)
+
+Update rows in the association.
+
+: (orm-assoc-update (obj1 orm-table) association-name (obj2 orm-table))
+
+Delete rows from the association.
+
+: (orm-assoc-delete (obj1 orm-table) association-name (obj2 orm-table))
+
+Objects associated with other objects are also considered during deletion.

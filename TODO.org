@@ -1,0 +1,49 @@
+* DONE Finish Implementing orm-assoc-get
+* TODO assoc utilities
+** orm-assoc-get-name
+name of self's slot
+** orm-assoc-
+* belongs-to
+** TODO orm-assoc--insert
+** TODO orm-assoc--present-p
+** TODO orm-assoc--first
+** TODO orm-assoc--all
+** TODO orm-assoc--find
+** TODO orm-assoc--update
+** TODO orm-assoc--delete
+** TODO orm-assoc--insert-assoc
+** TODO orm-assoc--update-assoc
+** TODO orm-assoc--delete-assoc
+* has-one
+** TODO orm-assoc--insert
+** TODO orm-assoc--present-p
+** TODO orm-assoc--first
+** TODO orm-assoc--all
+** TODO orm-assoc--find
+** TODO orm-assoc--update
+** TODO orm-assoc--delete
+** DONE orm-assoc--insert-assoc
+** DONE orm-assoc--update-assoc
+** TODO orm-assoc--delete-assoc
+* has-many
+** TODO orm-assoc--insert
+** TODO orm-assoc--present-p
+** TODO orm-assoc--first
+** TODO orm-assoc--all
+** TODO orm-assoc--find
+** TODO orm-assoc--update
+** TODO orm-assoc--delete
+** TODO orm-assoc--insert-assoc
+** TODO orm-assoc--update-assoc
+** TODO orm-assoc--delete-assoc
+* has-and-belongs-to-many
+** TODO orm-assoc--insert
+** TODO orm-assoc--present-p
+** TODO orm-assoc--first
+** TODO orm-assoc--all
+** TODO orm-assoc--find
+** TODO orm-assoc--update
+** TODO orm-assoc--delete
+** TODO orm-assoc--insert-assoc
+** TODO orm-assoc--update-assoc
+** TODO orm-assoc--delete-assoc
