@@ -8,15 +8,7 @@
 	   (age :initarg :age))
 	  :table authors)
 
-(deftable book ()
-	  ((title :initarg :title
-		  :primary-key t
-		  :not-null t)
-	   (year :initarg :year))
-	  :associations
-	  ((:belongs_to author :foreign-key writer)))
-
-(ert-deftest orm-book-crud-example ()
+(ert-deftest orm-author-crud-example ()
   "Tests orm-create"
   (skip-unless (not (file-exists-p "/tmp/test.db")))
 
@@ -52,6 +44,9 @@
       (should (or (equal first-author-name "Ayn Rand")
 		  (equal first-author-name "Franz Kafka"))))
 
+    (should (orm-present-p ayn-rand))
+    (should (orm-present-p franz-kafka))
+
     ;; Read & Update (orm-find, orm-update)
 
     (let ((inserted-franz-kafka-record1 (orm-find author "Franz Kafka")))
@@ -70,10 +65,14 @@
     (orm-delete franz-kafka)
 
     (should (equal (orm-count author) 1))
+    (should (orm-present-p ayn-rand))
+    (should (not (orm-present-p franz-kafka)))
 
     (orm-delete ayn-rand)
 
     (should (equal (orm-count author) 0))
+    (should (not (orm-present-p ayn-rand)))
+    (should (not (orm-present-p franz-kafka)))
 
     ;; Drop Table (orm-drop)
 
