@@ -44,18 +44,19 @@
 	  (push (orm-column--form-from-spec sname soptions) columns)
 	  (push (orm-column--table-constraint-from-spec sname soptions) table-constraints))))
 
-    `(defclass ,name (orm-table ,@mixins)
-       (,@(nreverse slots)
+    `(progn
+       (defclass ,name (orm-table ,@mixins)
+	 (,@(nreverse slots)
 
-	(table-name
-	 :initform (quote ,table-name))
-	(columns
-	 :initform (list ,@(nreverse columns)))
-	(associations
-	 :initform (list ,@(nreverse assocs)))
-	(table-constraints
-	 :initform (quote ,(cl-remove-if 'null (nreverse table-constraints)))))
+	  (table-name
+	   :initform (quote ,table-name))
+	  (columns
+	   :initform (list ,@(nreverse columns)))
+	  (associations
+	   :initform (list ,@(nreverse assocs)))
+	  (table-constraints
+	   :initform (quote ,(cl-remove-if 'null (nreverse table-constraints)))))
 
-       ,@(orm--filter-options-and-doc options-and-doc))))
+	 ,@(orm--filter-options-and-doc options-and-doc)))))
 
 (provide 'orm-macros)

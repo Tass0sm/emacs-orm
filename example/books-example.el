@@ -24,7 +24,7 @@
 		  :not-null t)
 	   (year :initarg :year))
 	  :associations
-	  ((:belongs_to author :foreign-key writer)))
+	  ((:belongs-to author :foreign-key writer)))
 
 ;; Create
 
