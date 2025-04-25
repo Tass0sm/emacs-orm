@@ -3,13 +3,15 @@
 (require 'eieio)
 
 (defclass orm-assoc ()
-  ((type :initarg :type)
-   (class :initarg :class)
-   (key :initarg :key))
+  ((type :initarg :type
+	 :accessor orm-assoc-type)
+   (class :initarg :class
+	  :accessor orm-assoc-class)
+   (key :initarg :key)
+   (join-table :initarg :join-table
+	       :accessor orm-assoc-join-table))
   :documentation
   "A class for associations of an relation-mapped class.")
-
-;; For macros
 
 ;; Form
 (defun orm-assoc--form-from-spec (type class options)
@@ -20,7 +22,6 @@
 				   (list :key))))
 
 ;; Self Columns
-
 (defun orm-assoc--get-belongs-to-self-column (table options)
   (let* ((fk (or (plist-get options :foreign-key)
 		 (intern (format "%s-id" (orm-table-name table)))))
@@ -42,26 +43,93 @@
 ;; Post-hoc Associations
 
 ;; Aux Tables
-
 (defun orm-assoc--get-join-table-name (table-name class)
   (let ((sorted-names (sort (list table-name class) (lambda (x y) (compare-strings x nil nil y nil nil)))))
     (intern (format "%s-%s" (car sorted-names) (cadr sorted-names)))))
 
-(defun orm-assoc--get-has-and-belongs-to-many-aux-table (table1 table2)
+(defun orm-assoc--get-has-and-belongs-to-many-aux-table (table1 table2 options)
   "Get auxiliary table for has-and-belongs-to-many"
   (let ((aux-table-name (orm-assoc--get-join-table-name
 			 (symbol-name (orm-table-name table1))
 			 (symbol-name (orm-table-name table2)))))
-    `(deftable ,aux-table-name ()
-	       ()
-	       :associations
-	       ((:belongs-to ,table1)
-		(:belongs-to ,table2)))))
+    `(progn
+       (deftable ,aux-table-name ()
+		 ,(plist-get options :extra-columns)
+		 :associations
+		 ((:belongs-to ,table1)
+		  (:belongs-to ,table2)))
+       (push (orm-assoc 
+	      :type :has-and-belongs-to-many
+	      :class ,table2
+	      :key nil
+	      :join-table ,aux-table-name)
+	     (slot-value (make-instance ,table1) 'associations))
+       (push (orm-assoc 
+	      :type :has-and-belongs-to-many
+	      :class ,table1
+	      :key nil
+	      :join-table ,aux-table-name)
+	     (slot-value (make-instance ,table2) 'associations)))))
 
-(defmacro defassoc (table1 type table2)
+(defmacro defassoc (table1 type table2 &rest options)
   ""
   (pcase type
-    (:has-and-belongs-to-many (orm-assoc--get-has-and-belongs-to-many-aux-table table1 table2))
+    (:belongs-to nil)
+    (:has-one nil)
+    (:has-many nil)
+    (:has-and-belongs-to-many (orm-assoc--get-has-and-belongs-to-many-aux-table table1 table2 options))
     (_ nil)))
+
+;; eieio--add-new-slot
+
+;; methods
+
+(defclass orm--assoc-pair ()
+  ((obj :initarg :obj
+	:accessor orm--assoc-pair-obj)
+   (assoc :initarg :assoc
+	  :accessor orm--assoc-pair-assoc))
+  :documentation
+  "A class for has-and-belongs-to-many associations.")
+
+(cl-defmethod orm-get-assoc ((obj orm-table) name)
+  "Get assoc from orm object based on name."
+  (orm--assoc-pair :obj obj
+		   :assoc (car (orm-table-associations obj))))
+
+(cl-defmethod orm-all ((assoc-pair orm--assoc-pair))
+  "Select from table for class in database."
+  (let* ((obj (orm--assoc-pair-obj assoc-pair))
+	 (assoc (orm--assoc-pair-assoc assoc-pair))
+	 (conn orm-default-conn)
+	 (primary-key (aref (orm-table-primary-key (type-of obj)) 0))
+	 (primary-key-value (slot-value obj primary-key))
+	 (table-name (orm-table-name (orm-assoc-class assoc))))
+    (pcase (orm-assoc-type assoc)
+      (:has-and-belongs-to-many
+       (emacsql-with-transaction conn
+	 (emacsql conn [:select :* :from $S1 :where (= $s2 $s3)] (vector table-name) primary-key primary-key-value))))))
+
+(cl-defmethod orm-append ((assoc-pair orm--assoc-pair) (other orm-table))
+  "Insert object into database."
+  (let* ((obj (orm--assoc-pair-obj assoc-pair))
+	 (conn orm-default-conn)
+	 (obj-primary-key (aref (orm-table-primary-key (type-of obj)) 0))
+	 (obj-primary-key-value (slot-value obj obj-primary-key))
+	 (other-primary-key (aref (orm-table-primary-key (type-of other)) 0))
+	 (other-primary-key-value (slot-value other other-primary-key))
+	 (assoc (orm--assoc-pair-assoc assoc-pair))
+	 (join-table-name (orm-table-name (orm-assoc-join-table assoc)))
+	 )
+    (pcase (orm-assoc-type assoc)
+      (:has-and-belongs-to-many
+       join-table-name
+       (orm-insert-or-update obj)
+       (orm-insert-or-update other)
+       (emacsql-with-transaction conn
+	 (emacsql conn [:insert :into $i1 :values $v2] join-table-name
+		  (vector obj-primary-key-value
+			  other-primary-key-value))))
+      (_ nil))))
 
 (provide 'orm-assoc)

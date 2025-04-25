@@ -44,7 +44,7 @@
 (cl-defmethod orm-created-p ((table (subclass orm-table)))
   "Is table for object class in SQLITE database?"
   (let ((conn orm-default-conn)
-	(table-name (orm-table-name table)))
+	(table-name (intern (replace-regexp-in-string "-" "_" (symbol-name (orm-table-name table))))))
     (emacsql-with-transaction conn
       (emacsql conn [:select 1 :from 'sqlite_master :where (= name $s1)] table-name))))
 
