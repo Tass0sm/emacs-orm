@@ -102,13 +102,19 @@
   (let* ((obj (orm--assoc-pair-obj assoc-pair))
 	 (assoc (orm--assoc-pair-assoc assoc-pair))
 	 (conn orm-default-conn)
+	 (join-table-key (intern (format "%s_id" (orm-table-name (type-of obj)))))
 	 (primary-key (aref (orm-table-primary-key (type-of obj)) 0))
 	 (primary-key-value (slot-value obj primary-key))
-	 (table-name (orm-table-name (orm-assoc-class assoc))))
+	 (join-table-name (orm-table-name (orm-assoc-join-table assoc))))
     (pcase (orm-assoc-type assoc)
       (:has-and-belongs-to-many
        (emacsql-with-transaction conn
-	 (emacsql conn [:select :* :from $S1 :where (= $s2 $s3)] (vector table-name) primary-key primary-key-value))))))
+	 (emacsql conn [:select :* :from $S1 :where (= $i2 $s3)] (vector join-table-name)
+		  join-table-key primary-key-value))))))
+
+;; SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate
+;; FROM Orders
+;; INNER JOIN Customers ON Orders.CustomerID=Customers.CustomerID;
 
 (cl-defmethod orm-append ((assoc-pair orm--assoc-pair) (other orm-table))
   "Insert object into database."
