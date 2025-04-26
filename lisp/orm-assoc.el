@@ -69,7 +69,8 @@
 	      :class ,table1
 	      :key nil
 	      :join-table ,aux-table-name)
-	     (slot-value (make-instance ,table2) 'associations)))))
+	     (slot-value (make-instance ,table2) 'associations))
+       ,aux-table-name)))
 
 (defmacro defassoc (table1 type table2 &rest options)
   ""
@@ -101,20 +102,29 @@
   "Select from table for class in database."
   (let* ((obj (orm--assoc-pair-obj assoc-pair))
 	 (assoc (orm--assoc-pair-assoc assoc-pair))
+	 (other (orm-assoc-class assoc))
 	 (conn orm-default-conn)
-	 (join-table-key (intern (format "%s_id" (orm-table-name (type-of obj)))))
-	 (primary-key (aref (orm-table-primary-key (type-of obj)) 0))
-	 (primary-key-value (slot-value obj primary-key))
-	 (join-table-name (orm-table-name (orm-assoc-join-table assoc))))
+	 (join-table-name (orm-table-name (orm-assoc-join-table assoc)))
+	 ;; primary key for self table
+	 (obj-primary-key (aref (orm-table-primary-key (type-of obj)) 0))
+	 (obj-primary-key-value (slot-value obj obj-primary-key))
+	 (obj-join-table-key (intern (format "%s_id" (orm-table-name (type-of obj)))))
+	 ;; primary key for other table
+	 (other-primary-key (aref (orm-table-primary-key other) 0))
+	 (other-join-table-key (intern (format "%s_id" (orm-table-name other))))
+	 (other-table-name (orm-table-name other)))
     (pcase (orm-assoc-type assoc)
       (:has-and-belongs-to-many
+       other-primary-key
        (emacsql-with-transaction conn
-	 (emacsql conn [:select :* :from $S1 :where (= $i2 $s3)] (vector join-table-name)
-		  join-table-key primary-key-value))))))
-
-;; SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate
-;; FROM Orders
-;; INNER JOIN Customers ON Orders.CustomerID=Customers.CustomerID;
+	 (emacsql conn [:select :* :from $i1 :where $i2 :in
+				[:select $i3 :from $i4 :where (= $i5 $s6)]]
+		  other-table-name
+		  other-primary-key
+		  other-join-table-key
+		  join-table-name
+		  obj-join-table-key
+		  obj-primary-key-value))))))
 
 (cl-defmethod orm-append ((assoc-pair orm--assoc-pair) (other orm-table))
   "Insert object into database."
@@ -125,8 +135,7 @@
 	 (other-primary-key (aref (orm-table-primary-key (type-of other)) 0))
 	 (other-primary-key-value (slot-value other other-primary-key))
 	 (assoc (orm--assoc-pair-assoc assoc-pair))
-	 (join-table-name (orm-table-name (orm-assoc-join-table assoc)))
-	 )
+	 (join-table-name (orm-table-name (orm-assoc-join-table assoc))))
     (pcase (orm-assoc-type assoc)
       (:has-and-belongs-to-many
        join-table-name
