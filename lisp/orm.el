@@ -13,6 +13,11 @@
   "If table is a subclass of orm-table and therefore a table-mapped class"
   (child-of-class-p table orm-table))
 
+(cl-defmethod orm-primary-key ((table orm-table))
+  "Get table column names"
+  (let ((table-primary-key (aref (orm-table-primary-key (type-of obj)) 0)))
+    (slot-value table table-primary-key)))
+
 (cl-defmethod orm-column-names ((table orm-table))
   "Get table column names"
   (let* ((cols (orm-table-columns table)))
@@ -78,7 +83,11 @@
 	(table-name (orm-table-name obj))
 	(values (orm--object-values obj)))
     (emacsql-with-transaction conn
-      (emacsql conn [:insert :into $i1 :values $v2] table-name values))))
+      (emacsql conn [:insert :into $i1 :values $v2] table-name values)
+
+      ;; Insert all that is associated with OBJ
+      (mapcar (lambda (assoc) (orm-assoc--insert-assoc conn assoc obj))
+	      (orm-table-associations obj)))))
 
 ;; Read - orm-all, orm-first
 

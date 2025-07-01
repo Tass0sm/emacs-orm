@@ -189,6 +189,23 @@
 			  other-primary-key-value))))
       (_ nil))))
 
+(defun orm-assoc--insert-assoc-row (conn assoc self-primary-key-value other-primary-key-value)
+  "Insert one association row into database."
+  (let ((join-table-name (orm-table-name (orm-assoc-join-table assoc))))
+    (emacsql-with-transaction conn
+      (emacsql conn [:insert :into $i1 :values $v2] join-table-name
+	       ;; TODO: see if this order is a problem
+	       (vector other-primary-key-value
+		       self-primary-key-value)))))
+
+(defun orm-assoc--insert-assoc (conn assoc obj)
+  "Insert entire association into database."
+  (let ((assoc-slot (orm-table-name (orm-assoc-class association)))
+	(obj-primary-key (orm-primary-key obj)))
+    (mapcar (lambda (x) (orm-assoc--insert-assoc-row
+			 conn assoc obj-primary-key x))
+	    (slot-value obj assoc-slot))))
+
 ;; (cl-defmethod (
 
 (provide 'orm-assoc)
