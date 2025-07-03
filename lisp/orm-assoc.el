@@ -88,7 +88,8 @@
   (let* ((name2 (orm-table-name table2))
 	 (initarg2 (orm--symbol-to-keyword name2)))
     `(progn
-       (augment-table-slots ,table1 ((,name2 :initarg ,initarg2)))
+       (augment-table-slots ,table1 ((,name2 :initarg ,initarg2
+					     :initform nil)))
        (orm-assoc--add-has-many-assoc table1 table2 options))))
 
 
@@ -98,8 +99,10 @@
 	 (name2 (orm-table-name table2))
 	 (initarg2 (orm--symbol-to-keyword name2)))
     `(progn
-       (augment-table-slots ,table1 ((,name2 :initarg ,initarg2)))
-       (augment-table-slots ,table2 ((,name1 :initarg ,initarg1)))
+       (augment-table-slots ,table1 ((,name2 :initarg ,initarg2
+					     :initform nil)))
+       (augment-table-slots ,table2 ((,name1 :initarg ,initarg1
+					     :initform nil)))
        ,@(orm-assoc--define-has-and-belongs-to-many-aux-table table1 table2 options))))
 
 (defmacro defassoc (table1 type table2 &rest options)
@@ -200,12 +203,11 @@
 
 (defun orm-assoc--insert-assoc (conn assoc obj)
   "Insert entire association into database."
-  (let ((assoc-slot (orm-table-name (orm-assoc-class association)))
+  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
 	(obj-primary-key (orm-primary-key obj)))
     (mapcar (lambda (x) (orm-assoc--insert-assoc-row
 			 conn assoc obj-primary-key x))
-	    (slot-value obj assoc-slot))))
-
-;; (cl-defmethod (
+	    (when (slot-boundp obj assoc-slot)
+		(slot-value obj assoc-slot)))))
 
 (provide 'orm-assoc)

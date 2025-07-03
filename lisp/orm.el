@@ -14,8 +14,8 @@
   (child-of-class-p table orm-table))
 
 (cl-defmethod orm-primary-key ((table orm-table))
-  "Get table column names"
-  (let ((table-primary-key (aref (orm-table-primary-key (type-of obj)) 0)))
+  "Get primary key of orm-table object instance TABLE"
+  (let ((table-primary-key (aref (orm-table-primary-key (type-of table)) 0)))
     (slot-value table table-primary-key)))
 
 (cl-defmethod orm-column-names ((table orm-table))
