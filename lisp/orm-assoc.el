@@ -210,4 +210,34 @@
 	    (when (slot-boundp obj assoc-slot)
 		(slot-value obj assoc-slot)))))
 
+(defun orm-assoc--update-assoc-row (conn assoc self-primary-key-value other-primary-key-value)
+  "Insert one association row into database."
+  (let ((join-table-name (orm-table-name (orm-assoc-join-table assoc))))
+    (emacsql-with-transaction conn
+      (emacsql conn [:insert :into $i1 :values $v2] join-table-name
+	       ;; TODO: see if this order is a problem
+	       (vector other-primary-key-value
+		       self-primary-key-value)))))
+
+(defun orm-assoc--update-assoc (conn assoc obj)
+  "Update entire association in database."
+  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
+	(obj-primary-key (orm-primary-key obj)))
+    ;; Identify deleted association rows
+
+
+    ;; Insert / update remaining assocation rows
+    (mapcar (lambda (x) (orm-assoc--update-assoc-row
+			 conn assoc obj-primary-key x))
+	    (when (slot-boundp obj assoc-slot)
+	      (slot-value obj assoc-slot)))))
+
+(defun orm-assoc--delete-assoc (conn assoc obj)
+  "Handle deletion for association in database."
+  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
+	(obj-primary-key (orm-primary-key obj)))
+    ;; Depending on association's deletion mode (e.g. delete, nullify) handle
+    ;; other items
+    ))
+
 (provide 'orm-assoc)
