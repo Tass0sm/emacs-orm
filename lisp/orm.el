@@ -9,6 +9,10 @@
 
 ;; Static Utils
 
+(defun orm-table-p (table)
+  "If table is a subclass of orm-table and therefore a table-mapped class"
+  (child-of-class-p table orm-table))
+
 (cl-defmethod orm-column-names ((table orm-table))
   "Get table column names"
   (let* ((cols (orm-table-columns table)))
@@ -18,7 +22,7 @@
   "Get table column names"
   (orm-column-names (make-instance table)))
 
-(defun symbol-to-keyword (sym)
+(defun orm--symbol-to-keyword (sym)
   (intern-soft (concat ":" (symbol-name sym))))
 
 ;; Static Methods
@@ -36,6 +40,13 @@
 	(schema (orm-table-schema table)))
     (emacsql-with-transaction conn
       (emacsql conn [:create-table $i1 $S2] table schema))))
+
+(cl-defmethod orm-created-p ((table (subclass orm-table)))
+  "Is table for object class in SQLITE database?"
+  (let ((conn orm-default-conn)
+	(table-name (orm-table-name table)))
+    (emacsql-with-transaction conn
+      (emacsql conn [:select 1 :from 'sqlite_master :where (= name $s1)] table-name))))
 
 (cl-defmethod orm-drop ((table (subclass orm-table)))
   "Create table for object class in database."
@@ -76,7 +87,7 @@
     (cons (car l1) (cons (car l2) (orm--interleave (cdr l1) (cdr l2))))))
 
 (cl-defmethod orm--make-from-record ((table (subclass orm-table)) record)
-  (apply 'make-instance (cons table (orm--interleave (mapcar 'symbol-to-keyword (orm-column-names table)) record))))
+  (apply 'make-instance (cons table (orm--interleave (mapcar 'orm--symbol-to-keyword (orm-column-names table)) record))))
 
 (cl-defmethod orm-all ((table (subclass orm-table)))
   "Select from table for class in database."
@@ -96,7 +107,7 @@
       (orm--make-from-record table (car record)))))
 
 (cl-defmethod orm-find ((table (subclass orm-table)) id)
-  "Update object in database."
+  "Find object in database by primary-key."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name table))
 	 (primary-key (aref (orm-table-primary-key table) 0))
@@ -106,13 +117,28 @@
     (when record
       (orm--make-from-record table record))))
 
+(cl-defmethod orm-present-p ((this orm-table))
+  "Return '(1) if object is in the database and nil otherwise."
+  (let* ((conn orm-default-conn)
+	 (table-name (orm-table-name this))
+	 (primary-key (aref (orm-table-primary-key (class-of this)) 0))
+	 (primary-key-value (slot-value this primary-key))
+	 (record (car (emacsql-with-transaction conn
+			(emacsql conn (vector :select :1 :from '$S1 :where (list '= '$i2 '$s3))
+				 (vector table-name) primary-key primary-key-value)))))
+    record))
+
 ;; Update - orm-update
 
-(defun orm-make-set-exprs (obj)
+(defun orm--zip-with-set-exprs (l1 l2)
+  (when (and l1 l2)
+    (cons (list '= (car l1) (car l2)) (orm--zip-with-set-exprs (cdr l1) (cdr l2)))))
+
+(defun orm--make-set-exprs (obj)
   (let ((column-names (orm-column-names obj))
 	;; Convert values vector to list
 	(values (append (orm--object-values obj) nil)))
-    (apply 'vector (-zip-with (lambda (x y) (list '= x y)) column-names values))))
+    (apply 'vector (orm--zip-with-set-exprs column-names values))))
 
 (cl-defmethod orm-update ((obj orm-table))
   "Update object in database."
@@ -121,8 +147,14 @@
 	 (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
 	 (primary-key-value (slot-value obj primary-key)))
     (emacsql-with-transaction conn
-      (emacsql conn (vector :update '$i1 :set (orm-make-set-exprs obj) :where (list '= '$i2 primary-key-value))
+      (emacsql conn (vector :update '$i1 :set (orm--make-set-exprs obj) :where (list '= '$i2 primary-key-value))
 	       table-name primary-key))))
+
+(cl-defmethod orm-insert-or-update ((this orm-table))
+  "Insert object in database or update if already present."
+  (if (orm-present-p this)
+      (orm-update this)
+    (orm-insert this)))
 
 ;; Delete - orm-delete
 
