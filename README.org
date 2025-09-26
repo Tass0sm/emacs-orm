@@ -22,6 +22,7 @@ class correspond to columns in the table.
 Define classes mapped to tables.
 
 : (deftable name mixins column-specs &rest options-and-doc)
+: (orm-table-p table)
 
 Create and Drop Tables.
 
@@ -31,10 +32,13 @@ Create and Drop Tables.
 Create new rows in the table.
 
 : (orm-insert (obj orm-table))
+: (orm-insert-or-update (obj orm-table))
 
-Read rows from the table.
+Check for and read rows from the table.
 
+: (orm-present-p (obj orm-table))
 : (orm-first (table (subclass orm-table)))
+: (orm-all (table (subclass orm-table)))
 : (orm-find (table (subclass orm-table)) id)
 
 Update rows in the table.

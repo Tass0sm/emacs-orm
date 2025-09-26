@@ -90,7 +90,7 @@
   (apply 'make-instance (cons table (orm--interleave (mapcar 'orm--symbol-to-keyword (orm-column-names table)) record))))
 
 (cl-defmethod orm-all ((table (subclass orm-table)))
-  "Select from table for class in database."
+  "Select all rows from orm class TABLE."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name table))
 	 (records (emacsql-with-transaction conn
@@ -98,7 +98,7 @@
     (mapcar (lambda (r) (orm--make-from-record table r)) records)))
 
 (cl-defmethod orm-first ((table (subclass orm-table)))
-  "Select from table for class in database."
+  "Select first row from orm class TABLE."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name table))
 	 (record (emacsql-with-transaction conn
@@ -107,7 +107,7 @@
       (orm--make-from-record table (car record)))))
 
 (cl-defmethod orm-find ((table (subclass orm-table)) id)
-  "Find object in database by primary-key."
+  "Find object in TABLE by primary-key ID."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name table))
 	 (primary-key (aref (orm-table-primary-key table) 0))
@@ -159,7 +159,7 @@
 ;; Delete - orm-delete
 
 (cl-defmethod orm-delete ((obj orm-table))
-  "Update object in database."
+  "Delete object in database."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name obj))
 	 (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
