@@ -117,12 +117,12 @@
     (when record
       (orm--make-from-record table record))))
 
-(cl-defmethod orm-present-p ((this orm-table))
+(cl-defmethod orm-present-p ((obj orm-table))
   "Return '(1) if object is in the database and nil otherwise."
   (let* ((conn orm-default-conn)
-	 (table-name (orm-table-name this))
-	 (primary-key (aref (orm-table-primary-key (class-of this)) 0))
-	 (primary-key-value (slot-value this primary-key))
+	 (table-name (orm-table-name obj))
+	 (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
+	 (primary-key-value (slot-value obj primary-key))
 	 (record (car (emacsql-with-transaction conn
 			(emacsql conn (vector :select :1 :from '$S1 :where (list '= '$i2 '$s3))
 				 (vector table-name) primary-key primary-key-value)))))
@@ -150,11 +150,11 @@
       (emacsql conn (vector :update '$i1 :set (orm--make-set-exprs obj) :where (list '= '$i2 primary-key-value))
 	       table-name primary-key))))
 
-(cl-defmethod orm-insert-or-update ((this orm-table))
+(cl-defmethod orm-insert-or-update ((obj orm-table))
   "Insert object in database or update if already present."
-  (if (orm-present-p this)
-      (orm-update this)
-    (orm-insert this)))
+  (if (orm-present-p obj)
+      (orm-update obj)
+    (orm-insert obj)))
 
 ;; Delete - orm-delete
 
