@@ -1,14 +1,14 @@
 #+title: ORM
 
 #+begin_src elisp
-  (deftable person ()
-	    ((name :initarg :name
-		   :primary-key t
-		   :not-null t)
-	     (age  :initarg :age))
-	    :table people
-	    :documentation
-	    "Person class with correspondence to a table named people")
+(deftable person ()
+          ((name :initarg :name
+      	         :primary-key t
+      	         :not-null t)
+           (age  :initarg :age))
+          :table people
+          :documentation
+          "Person class with correspondence to a table named people")
 #+end_src
 
 * Summary
@@ -18,9 +18,29 @@ database. Instances of the class correspond to records in a table. Slots of the
 class correspond to columns in the table.
 
 * Features
-** Create, Read, Update, Delete (CRUD) Methods
-*** orm-insert
-*** orm-find
-*** orm-update
-**** TODO multi-key
-*** orm-delete
+
+Define classes mapped to tables.
+
+: (deftable name mixins column-specs &rest options-and-doc)
+
+Create and Drop Tables.
+
+: (orm-create (table (subclass orm-table)))
+: (orm-drop (table (subclass orm-table)))
+
+Create new rows in the table.
+
+: (orm-insert (obj orm-table))
+
+Read rows from the table.
+
+: (orm-first (table (subclass orm-table)))
+: (orm-find (table (subclass orm-table)) id)
+
+Update rows in the table.
+
+: (orm-update (obj orm-table))
+
+Delete rows from the table
+
+: (orm-delete (obj orm-table))

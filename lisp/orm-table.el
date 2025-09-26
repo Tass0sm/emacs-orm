@@ -33,8 +33,8 @@
   "This special class enables persistence through a database."
   :abstract t)
 
-(cl-defmethod orm-ref ((this orm-table) key)
-  (mapcar (lambda (k) (slot-value this k)) key))
+(cl-defmethod orm-ref ((obj orm-table) key)
+  (mapcar (lambda (k) (slot-value obj k)) key))
 
 (cl-defmethod orm-table-name ((table (subclass orm-table)))
   "Get class table name"

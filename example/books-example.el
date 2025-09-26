@@ -1,4 +1,4 @@
-(require 'orm-table)
+(require 'orm)
 
 (setq orm-default-db (orm-db :type :sql :file "/tmp/test.db"))
 (setq orm-default-conn (orm-connect orm-default-db))
@@ -36,6 +36,8 @@
 
 (orm-all author)
 (orm-first author)
+
+(orm-first book)
 
 ;; Update
 

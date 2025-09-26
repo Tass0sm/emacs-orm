@@ -47,25 +47,25 @@
 
 ;; Instance Utils
 
-(cl-defmethod orm--object-values ((this orm-table))
+(cl-defmethod orm--object-values ((obj orm-table))
   "Get values vector for object"
-  (let* ((class (class-of this))
+  (let* ((class (class-of obj))
 	 (column-names (orm-column-names class)))
     (apply 'vector
 	   (cl-loop for slot in column-names
-		    collect (if (slot-boundp this slot)
-				(slot-value this slot)
+		    collect (if (slot-boundp obj slot)
+				(slot-value obj slot)
 			      nil)))))
 
 ;; CRUD
 
 ;; Create - orm-insert
 
-(cl-defmethod orm-insert ((this orm-table))
+(cl-defmethod orm-insert ((obj orm-table))
   "Insert object into database."
   (let ((conn orm-default-conn)
-	(table-name (orm-table-name this))
-	(values (orm--object-values this)))
+	(table-name (orm-table-name obj))
+	(values (orm--object-values obj)))
     (emacsql-with-transaction conn
       (emacsql conn [:insert :into $i1 :values $v2] table-name values))))
 
@@ -114,24 +114,24 @@
 	(values (append (orm--object-values obj) nil)))
     (apply 'vector (-zip-with (lambda (x y) (list '= x y)) column-names values))))
 
-(cl-defmethod orm-update ((this orm-table))
+(cl-defmethod orm-update ((obj orm-table))
   "Update object in database."
   (let* ((conn orm-default-conn)
-	 (table-name (orm-table-name this))
-	 (primary-key (aref (orm-table-primary-key (class-of this)) 0))
-	 (primary-key-value (slot-value this primary-key)))
+	 (table-name (orm-table-name obj))
+	 (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
+	 (primary-key-value (slot-value obj primary-key)))
     (emacsql-with-transaction conn
-      (emacsql conn (vector :update '$i1 :set (orm-make-set-exprs this) :where (list '= '$i2 primary-key-value))
+      (emacsql conn (vector :update '$i1 :set (orm-make-set-exprs obj) :where (list '= '$i2 primary-key-value))
 	       table-name primary-key))))
 
 ;; Delete - orm-delete
 
-(cl-defmethod orm-delete ((this orm-table))
+(cl-defmethod orm-delete ((obj orm-table))
   "Update object in database."
   (let* ((conn orm-default-conn)
-	 (table-name (orm-table-name this))
-	 (primary-key (aref (orm-table-primary-key (class-of this)) 0))
-	 (primary-key-value (slot-value this primary-key)))
+	 (table-name (orm-table-name obj))
+	 (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
+	 (primary-key-value (slot-value obj primary-key)))
     (emacsql-with-transaction conn
       (emacsql conn (vector :delete-from '$i1 :where (list '= '$i2 primary-key-value))
 	       table-name primary-key))))
