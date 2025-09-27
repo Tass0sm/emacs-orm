@@ -47,12 +47,12 @@
       ,@(unless (eq initform eieio--unbound) `(:initform ,initform))
       ,@(when documentation `(:documentation ,documentation)))))
 
-(defmacro augment-table-slots (table new-slots)
+(defmacro orm--augment-table-slots (table new-slots)
   "Redefine TABLE, adding NEW-COLUMNS to its definition."
   (let* ((class table)
 	 (parents (mapcar (lambda (parent) (eieio--class-name parent)) (eieio-class-parents class)))
          (old-slots (mapcar (lambda (s) (orm--slot-descriptor->slot-form class s)) (eieio-class-slots class)))
-	 (slots (append new-slots old-slots))
+	 (slots (append old-slots new-slots))
 	 (table-name (orm-table-name table))
 	 (columns (mapcar 'orm--eieio-instance->sexp (orm-table-columns table)))
 	 (associations (mapcar 'orm--eieio-instance->sexp (orm-table-associations table)))

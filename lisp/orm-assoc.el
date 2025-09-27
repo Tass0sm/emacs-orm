@@ -88,7 +88,7 @@
   (let* ((name2 (orm-table-name table2))
 	 (initarg2 (orm--symbol-to-keyword name2)))
     `(progn
-       (augment-table-slots ,table1 ((,name2 :initarg ,initarg2
+       (orm--augment-table-slots ,table1 ((,name2 :initarg ,initarg2
 					     :initform nil)))
        (orm-assoc--add-has-many-assoc table1 table2 options))))
 
@@ -99,9 +99,9 @@
 	 (name2 (orm-table-name table2))
 	 (initarg2 (orm--symbol-to-keyword name2)))
     `(progn
-       (augment-table-slots ,table1 ((,name2 :initarg ,initarg2
+       (orm--augment-table-slots ,table1 ((,name2 :initarg ,initarg2
 					     :initform nil)))
-       (augment-table-slots ,table2 ((,name1 :initarg ,initarg1
+       (orm--augment-table-slots ,table2 ((,name1 :initarg ,initarg1
 					     :initform nil)))
        ,@(orm-assoc--define-has-and-belongs-to-many-aux-table table1 table2 options))))
 
@@ -126,11 +126,14 @@
   :documentation
   "A class for has-and-belongs-to-many associations.")
 
-(cl-defmethod orm-get-assoc ((obj orm-table) name)
-  "Get assoc from orm object based on name."
+;; TODO
+
+(cl-defmethod orm-assoc-get ((obj orm-table) name)
+  "Get association NAME of OBJ."
   (orm--assoc-pair :obj obj
 		   :assoc (car (orm-table-associations obj))))
 
+(define-obsolete-function-alias 'orm-get-assoc 'orm-assoc-get "2025-09-26")
 
 (cl-defmethod orm-all ((assoc-pair orm--assoc-pair))
   "Select from table for class in database."
@@ -239,5 +242,33 @@
     ;; Depending on association's deletion mode (e.g. delete, nullify) handle
     ;; other items
     ))
+
+
+;; TODO: has-one association
+
+(cl-defmethod orm-assoc--insert ((assoc orm-belongs-to) (obj orm-table))
+  "Insert object for belongs-to association"
+  )
+
+;; TODO: has-many association
+
+(cl-defmethod orm-assoc--insert ((assoc orm-belongs-to) (obj orm-table))
+  "Insert object for belongs-to association"
+  )
+
+;; TODO: has-and-belongs-to-many association
+
+(cl-defmethod orm-assoc--insert ((assoc orm-has-and-belongs-to-many) (obj orm-table))
+  "Insert object for belongs-to association"
+  )
+
+;; CRUD
+
+;; Create - orm-insert
+
+;; (cl-defmethod orm-insert ((obj1 orm-table) association-name (obj2 orm-table))
+;;   "Insert object for association."
+;;   (orm-assoc--insert (orm-assoc-get obj1 association-name) obj2))
+
 
 (provide 'orm-assoc)
