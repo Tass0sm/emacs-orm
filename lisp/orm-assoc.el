@@ -116,7 +116,8 @@
 	 (join-table-name (orm-table-name (orm-assoc-join-table assoc))))
     (orm-insert-or-update obj1)
     (orm-insert-or-update obj2)
-    (push obj2 (slot-value obj1 (orm-table-name (orm-assoc-class assoc))))
+    (push obj2 (slot-value obj1 (orm-table-name obj2)))
+    (push obj1 (slot-value obj2 (orm-table-name obj1)))
     (emacsql-with-transaction conn
       (emacsql conn [:insert :into $i1 :values $v2] join-table-name
                (vector obj-primary-key-value other-primary-key-value)))))
@@ -171,10 +172,6 @@
                  :class ,class
 	         ,@(orm--filter-plist options
 				      (list :key))))
-    (:has-and-belongs-to-many `(orm-has-and-belongs-to-many-assoc
-                                :class ,class
-	                        ,@(orm--filter-plist options
-				                     (list :key))))
     (_ nil)))
 
 (defmacro defassoc (table1 type table2 &rest options)
@@ -315,23 +312,23 @@
   ""
   )
 
-(cl-defmethod orm-assoc-first (obj orm-table) association-name
+(cl-defmethod orm-assoc-first ((obj orm-table) association-name)
   ""
   )
 
-(cl-defmethod orm-assoc-all (obj orm-table) association-name
+(cl-defmethod orm-assoc-all ((obj orm-table) association-name)
+  ""
+  (orm-assoc--all obj (orm-assoc-get obj association-name)))
+
+(cl-defmethod orm-assoc-find ((obj orm-table) association-name)
   ""
   )
 
-(cl-defmethod orm-assoc-find (obj orm-table) association-name
-  ""
-  )
-
-(cl-defmethod orm-assoc-update (obj1 orm-table) association-name (obj2 orm-table)
+(cl-defmethod orm-assoc-update ((obj1 orm-table) association-name (obj2 orm-table))
   "Update rows in the association."
   )
 
-(cl-defmethod orm-assoc-delete (obj1 orm-table) association-name (obj2 orm-table)
+(cl-defmethod orm-assoc-delete ((obj1 orm-table) association-name (obj2 orm-table))
   "Delete rows from the association."
   )
 
