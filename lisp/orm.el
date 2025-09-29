@@ -85,9 +85,10 @@
     (emacsql-with-transaction conn
       (emacsql conn [:insert :into $i1 :values $v2] table-name values)
 
-      ;; Insert all that is associated with OBJ
-      (mapcar (lambda (assoc) (orm-assoc--insert-assoc conn assoc obj))
-	      (orm-table-associations obj)))))
+      ;; ;; Insert all that is associated with OBJ
+      ;; (mapcar (lambda (assoc) (orm-assoc--insert-assoc conn assoc obj))
+      ;;         (orm-table-associations obj))
+      )))
 
 ;; Read - orm-all, orm-first
 
@@ -159,9 +160,10 @@
       (emacsql conn (vector :update '$i1 :set (orm--make-set-exprs obj) :where (list '= '$i2 primary-key-value))
 	       table-name primary-key)
 
-      ;; Update all that is associated with OBJ
-      (mapcar (lambda (assoc) (orm-assoc--update-assoc conn assoc obj))
-	      (orm-table-associations obj)))))
+      ;; ;; Update all that is associated with OBJ
+      ;; (mapcar (lambda (assoc) (orm-assoc--update-assoc conn assoc obj))
+      ;;         (orm-table-associations obj))
+      )))
 
 (cl-defmethod orm-insert-or-update ((obj orm-table))
   "Insert object in database or update if already present."
