@@ -26,12 +26,26 @@
     (message "join-table already created")
   (orm-create join-table))
 
-(setq bolt (part :name "bolt" :assemblies nil))
+(setq bolt (part :name "bolt"))
 (setq box (assembly :name "box"))
 
-(orm-assoc-insert bolt 'assemblies box)
+(orm-assoc-get bolt 'assemblies)
+(orm-assoc-get box 'parts)
 
-;; (orm-all (orm-get-assoc bolt 'assemblies))
+;; (orm-assoc-insert bolt 'assemblies box)
+;; OR
+(push box (slot-value bolt 'assemblies))
+(orm-update box)
+
+(orm-assoc-all bolt 'assemblies)
+
+
+
+(orm-assoc-all bolt 'assemblies)
+(orm-assoc-all box 'parts)
+
+(orm-assoc-update
+
 ;; (orm-append (orm-get-assoc bolt 'assemblies) box)
 
 ;; (orm-append (orm-get-assoc bolt 'assemblies) "box")

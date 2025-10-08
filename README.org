@@ -56,6 +56,11 @@ between table-mapped objects.
 
 : (defassoc table1 type table2 &rest options)
 
+The above operations when applied to objects with associations will respect
+those associations and keep the database up-to-date with the association data
+included in the objects. There are also a separate set of operations
+specifically for dealing with associations.
+
 Get an association by name.
 
 : (orm-assoc-get (table (subclass orm-table)) association-name)

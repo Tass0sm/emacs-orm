@@ -1,11 +1,14 @@
 ;;; -*- lexical-binding: t -*-
 
 (require 'eieio)
+(require 'inflections)
 
 ;; association class
 
 (defclass orm-assoc ()
-  ((class :initarg :class
+  ((name :initarg :name
+         :accessor orm-assoc-name)
+   (class :initarg :class
           :accessor orm-assoc-class)
    (key :initarg :key
         :accessor orm-assoc-key)
@@ -14,11 +17,51 @@
   :documentation
   "A class for associations of an relation-mapped class.")
 
+
+(cl-defgeneric orm-assoc--insert (obj1 assoc obj2)
+  "insert")
+
+(cl-defgeneric orm-assoc--present-p (obj1 assoc obj2)
+  "present-p")
+
+(cl-defgeneric orm-assoc--first (obj1 assoc obj2)
+  "first")
+
+(cl-defgeneric orm-assoc--all (obj assoc)
+  "all")
+
+(cl-defgeneric orm-assoc--find (obj1 assoc obj2)
+  "find")
+
+(cl-defgeneric orm-assoc--update (obj1 assoc obj2)
+  "update")
+
+(cl-defgeneric orm-assoc--delete (obj1 assoc obj2)
+  "delete")
+
+;; For maintaining associations in other operations
+
+(cl-defgeneric orm-assoc--insert-assoc (obj1 assoc)
+  "inserts entire association")
+
+(cl-defgeneric orm-assoc--update-assoc (obj1 assoc)
+  "updates entire association")
+
+(cl-defgeneric orm-assoc--delete-assoc (obj1 assoc)
+  "deletes entire association")
+
+                                        ; utils
+
+(defun orm-assoc--pluralize-symbol (sym)
+  (intern (inflection-pluralize-string (symbol-name sym))))
+
+(defun orm-assoc--singularize-symbol (sym)
+  (intern (inflection-singularize-string (symbol-name sym))))
+
                                         ; belongs-to
 
 (defclass orm-belongs-to-assoc (orm-assoc) ())
 
-;; self columns
 (defun orm-assoc--get-belongs-to-self-column (table options)
   (let* ((fk (or (plist-get options :foreign-key)
 		 (intern (format "%s-id" (orm-table-name table)))))
@@ -36,36 +79,205 @@
     (:belongs-to (orm-assoc--get-belongs-to-self-column table options))
     (_ nil)))
 
-;; Post-hoc Associations
+(cl-defmethod orm-assoc--insert-assoc (conn obj (assoc orm-belongs-to-assoc))
+  "Insert entire association into database."
+  nil
+  ;; (let* ((other (slot-value obj (orm-assoc-name assoc))))
+  ;;   (orm-insert-or-update other)
+  ;;   (orm-insert-or-update obj))
+
+  ;; get other obj with slot using assoc name
+  ;; insert or update it
+  ;; update self's foreign key
+  ;; insert or update self
+  )
+
+(cl-defmethod orm-assoc--update-assoc (conn obj (assoc orm-belongs-to-assoc))
+  "Update entire association in database."
+  nil
+  ;; get other obj with slot using assoc name
+  ;; update it
+  ;; set self's foreign key
+  ;; update self
+  )
+
+(cl-defmethod orm-assoc--delete-assoc (conn obj (assoc orm-belongs-to-assoc))
+  "Handle deletion for association in database."
+  nil
+  ;; get other obj with slot using assoc name
+  ;; delete it
+  ;; update self's foreign key (set to NULL)
+  ;; update self if it should still exist?
+  )
+
+(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-belongs-to-assoc) (obj2 orm-table))
+  "Insert object for belongs-to association"
+  (let ((conn orm-default-conn))
+    (setf (slot-value obj1 (orm-assoc-name assoc)) obj2)
+    (orm-assoc--insert-assoc conn obj1 assoc)))
+
+(cl-defmethod orm-assoc--present-p ((obj1 orm-table) (assoc orm-belongs-to-assoc) (obj2 orm-table))
+  "Check if obj2 is present in obj1's belongs_to association."
+
+  ;; (let* ((conn orm-default-conn)
+  ;;        (other (orm-assoc-class assoc))
+  ;;        ;; primary key for self table
+  ;;        (obj-primary-key (aref (orm-table-primary-key (type-of obj)) 0))
+  ;;        (obj-primary-key-value (slot-value obj obj-primary-key))
+  ;;        ;; primary key for other table
+  ;;        (other-primary-key (aref (orm-table-primary-key other) 0))
+  ;;        (other-table-name (orm-table-name other))
+  ;;        ;; join table keys
+  ;;        (join-table-name (orm-table-name (orm-assoc-join-table assoc)))
+  ;;        (obj-join-table-key (intern (format "%s_id" (orm-table-name (type-of obj)))))
+  ;;        (other-join-table-key (intern (format "%s_id" (orm-table-name other)))))
+  ;;   (emacsql-with-transaction conn
+  ;;     (emacsql conn [:select :* :from $i1 :where $i2 :in
+  ;;       		     [:select $i3 :from $i4 :where (= $i5 $s6)]]
+  ;;              other-table-name
+  ;;              other-primary-key
+  ;;              other-join-table-key
+  ;;              join-table-name
+  ;;              obj-join-table-key
+  ;;              obj-primary-key-value)))
+
+  (let* ((conn orm-default-conn)
+	 ;; (table-name (orm-table-name obj))
+	 ;; (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
+	 ;; (primary-key-value (slot-value obj primary-key))
+	 ;; (record (car (emacsql-with-transaction conn
+	 ;;        	(emacsql conn (vector :select :1 :from '$S1 :where (list '= '$i2 '$s3))
+	 ;;        		 (vector table-name) primary-key primary-key-value))))
+         )
+    ;; record
+    1
+    ;; table-name
+    )
+  ;; (let* ((conn orm-default-conn))
+  ;;   ;; Record reference to obj1 in obj2
+  ;;   (setf (slot-value obj2 (orm-table-name obj1)) obj1)
+  ;;   (orm-insert-or-update obj2))
+  )
+
+                                        ; has-one
+
+(defclass orm-has-one-assoc (orm-assoc) ())
+
+(defun orm-assoc--defassoc-has-one (table1 table2 options)
+  (let* ((name2 (orm-assoc--singularize-symbol table2))
+	 (initarg2 (orm--symbol-to-keyword name2)))
+    `(progn
+       (orm--augment-table-slots ,table1 ((,name2 :initarg ,initarg2
+        				          :initform nil)))
+
+       ;; TODO: add foreign key to other table if it doesn't exist
+
+       (push (orm-has-one-assoc
+              :name (quote ,name2)
+	      :class ,table2
+	      :key (quote ,table1) ;; TODO: use key from options
+	      :join-table nil)
+	     (slot-value (make-instance ,table1) 'associations)))))
+
+(cl-defmethod orm-assoc--insert-assoc (conn obj (assoc orm-has-one-assoc))
+  "Insert has-one association into database."
+  (let ((other (slot-value obj (orm-assoc-name assoc))))
+    (when other
+      (setf (slot-value other (orm-assoc-key assoc)) obj)
+      (orm-insert-or-update other))))
+
+(cl-defmethod orm-assoc--update-assoc (conn obj (assoc orm-has-one-assoc))
+  "Update has-one association in database."
+  (let ((other (slot-value obj (orm-assoc-name assoc))))
+    (when other
+      (setf (slot-value other (orm-assoc-key assoc)) obj)
+      (orm-insert-or-update other))))
+
+(cl-defmethod orm-assoc--delete-assoc (conn obj (assoc orm-has-one-assoc))
+  "Handle deletion for association in database."
+  ;; get other obj with slot using assoc name
+  ;; delete it
+  )
+
+(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-one-assoc) (obj2 orm-table))
+  "Insert object for has-one association"
+  (let ((conn orm-default-conn))
+    (setf (slot-value obj1 (orm-assoc-name assoc)) obj2)
+    (orm-assoc--insert-assoc conn obj1 assoc)))
 
                                         ; has-many
 
 (defclass orm-has-many-assoc (orm-assoc) ())
 
-(defun orm-assoc--add-has-many-assoc (table1 table2 options)
-  "Get auxiliary table for has-and-belongs-to-many"
-  `(progn
-     (push (orm-has-many-assoc
-	    :class ,table2
-	    :key nil
-	    :join-table nil)
-	   (slot-value (make-instance ,table1) 'associations))))
-
 (defun orm-assoc--defassoc-has-many (table1 table2 options)
-  (let* ((name2 (orm-table-name table2))
+  (let* ((name2 (orm-assoc--pluralize-symbol table2))
 	 (initarg2 (orm--symbol-to-keyword name2)))
     `(progn
        (orm--augment-table-slots ,table1 ((,name2 :initarg ,initarg2
-					     :initform nil)))
-       (orm-assoc--add-has-many-assoc table1 table2 options))))
+					          :initform nil)))
+       (push (orm-has-many-assoc
+              :name (quote ,name2)
+	      :class ,table2
+	      :key (quote ,table1)
+	      :join-table nil)
+	     (slot-value (make-instance ,table1) 'associations)))))
 
-;; (cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-many-assoc) (obj2 orm-table))
-;;   "Insert object for has-many association"
-;;   )
+(cl-defmethod orm-assoc--insert-assoc (conn obj (assoc orm-has-many-assoc))
+  "Insert entire association into database."
+  (let* ((in-db nil) ;; TODO: call to orm-assoc--all
+         (in-obj (slot-value obj (orm-assoc-name assoc)))
+         (to-insert (cl-set-difference in-obj in-db)))
+    (mapcar (lambda (x)
+              (setf (slot-value x (orm-assoc-key assoc)) obj)
+              (orm-insert-or-update x))
+            to-insert)))
+
+(cl-defmethod orm-assoc--update-assoc (conn obj (assoc orm-has-many-assoc))
+  "Update entire association in database."
+
+  ;; (to-insert (cl-set-difference in-obj in-db)) ;; in-obj - in-db
+  ;; (to-update ) ;; in-obj ^ in-db
+  ;; (to-delete ) ;; in-db - in-obj
+
+  ;; get list of current associated objects
+  ;; get list of associated objects from obj slot
+  ;; Identify deleted association rows
+  ;; Insert / update remaining assocation rows
+  )
+
+(cl-defmethod orm-assoc--delete-assoc (conn obj (assoc orm-has-many-assoc))
+  "Handle deletion for association in database."
+  ;; get list of current associated objects
+  ;; get list of associated objects from obj slot
+  ;; Identify deleted association rows
+  ;; Insert / update remaining assocation rows
+  )
+
+(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-many-assoc) (obj2 orm-table))
+  "Insert object for has-many association"
+  (let ((conn orm-default-conn))
+    (cl-pushnew obj2 (slot-value obj1 (orm-assoc-name assoc)))
+    (orm-assoc--insert-assoc conn obj1 assoc)))
+
+(cl-defmethod orm-assoc--all ((obj orm-table) (assoc orm-has-many-assoc))
+  "Find all objects for has-and-belongs-to-many association"
+  (let* ((conn orm-default-conn)
+	 (other-table-name (orm-table-name (orm-assoc-class assoc)))
+	 (pkv (orm-primary-key obj))
+         (fk (orm-assoc-key assoc)))
+    ;; TODO: make objects from rows
+    (emacsql-with-transaction conn
+      (emacsql conn [:select :* :from $i1 :where (= $i2 $s3)]
+               other-table-name fk pkv))))
 
                                         ; has-and-belongs-to-many
 
-(defclass orm-has-and-belongs-to-many-assoc (orm-assoc) ())
+(defclass orm-has-and-belongs-to-many-assoc (orm-assoc)
+  (;; (class1 :initarg :class1
+   ;;         :accessor orm-assoc-class1)
+   ;; (class2 :initarg :class2
+   ;;         :accessor orm-assoc-class2)
+   ))
 
 ;; Aux Tables
 (defun orm-assoc--get-join-table-name (table-name class)
@@ -84,20 +296,22 @@
 		 (:belongs-to ,table2)))
       (push (orm-has-and-belongs-to-many-assoc
 	     :class ,table2
+             ;; :class1 ,table1 :class2 ,table2
 	     :key nil
 	     :join-table ,aux-table-name)
 	    (slot-value (make-instance ,table1) 'associations))
       (push (orm-has-and-belongs-to-many-assoc
 	     :class ,table1
+             ;; :class1 ,table1 :class2 ,table2
 	     :key nil
 	     :join-table ,aux-table-name)
 	    (slot-value (make-instance ,table2) 'associations))
       ,aux-table-name)))
 
 (defun orm-assoc--defassoc-has-and-belongs-to-many (table1 table2 options)
-  (let* ((name1 (orm-table-name table1))
+  (let* ((name1 (orm-assoc--pluralize-symbol table1))
 	 (initarg1 (orm--symbol-to-keyword name1))
-	 (name2 (orm-table-name table2))
+	 (name2 (orm-assoc--pluralize-symbol table2))
 	 (initarg2 (orm--symbol-to-keyword name2)))
     `(progn
        (orm--augment-table-slots ,table1 ((,name2 :initarg ,initarg2
@@ -154,6 +368,59 @@
   "Delete object in has-and-belongs-to-many association"
   )
 
+
+(cl-defmethod orm-assoc--insert-assoc-row (conn (assoc orm-has-and-belongs-to-many-assoc) self-primary-key-value other-primary-key-value)
+  "Insert one association row into database."
+  (let ((join-table-name (orm-table-name (orm-assoc-join-table assoc))))
+    (emacsql-with-transaction conn
+      (emacsql conn [:insert :into $i1 :values $v2] join-table-name
+	       ;; TODO: see if this order is a problem
+	       (vector other-primary-key-value
+		       self-primary-key-value)))))
+
+(cl-defmethod orm-assoc--insert-assoc (conn obj (assoc orm-has-and-belongs-to-many-assoc))
+  "Insert entire association into database."
+  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
+	(obj-primary-key (orm-primary-key obj)))
+    (mapcar (lambda (x) (orm-assoc--insert-assoc-row
+			 conn assoc obj-primary-key x))
+	    (when (slot-boundp obj assoc-slot)
+		(slot-value obj assoc-slot)))))
+
+(cl-defmethod orm-assoc--update-assoc-row (conn (assoc orm-has-and-belongs-to-many-assoc) self-primary-key-value other-primary-key-value)
+  "Insert one association row into database."
+  (let ((join-table-name (orm-table-name (orm-assoc-join-table assoc))))
+    (emacsql-with-transaction conn
+      (emacsql conn [:insert :into $i1 :values $v2] join-table-name
+	       ;; TODO: see if this order is a problem
+	       (vector other-primary-key-value
+		       self-primary-key-value)))))
+
+(cl-defmethod orm-assoc--update-assoc (conn obj (assoc orm-has-and-belongs-to-many-assoc))
+  "Update entire association in database."
+  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
+        (obj-primary-key (orm-primary-key obj))
+
+        ;; (current-rows (slot-value obj assoc-slot))
+        )
+    ;; Identify deleted association rows
+
+
+    ;; Insert / update remaining assocation rows
+    ;; (mapcar (lambda (x) (orm-assoc--update-assoc-row
+    ;;     		 conn assoc obj-primary-key x))
+    ;;         (when (slot-boundp obj assoc-slot)
+    ;;           (slot-value obj assoc-slot))))
+    assoc))
+
+(cl-defmethod orm-assoc--delete-assoc (conn obj (assoc orm-has-and-belongs-to-many-assoc))
+  "Handle deletion for association in database."
+  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
+	(obj-primary-key (orm-primary-key obj)))
+    ;; Depending on association's deletion mode (e.g. delete, nullify) handle
+    ;; other items
+    ))
+
                                         ; general utilities
 
 ;; association class form from a spec
@@ -161,14 +428,17 @@
   "Make assoc instance"
   (pcase type
     (:belongs-to `(orm-belongs-to-assoc
+                   :name ,(orm-assoc--singularize-symbol class)
                    :class ,class
 	           ,@(orm--filter-plist options
 				        (list :key))))
     (:has-one `(orm-has-one-assoc
+                :name ,(orm-assoc--pluralize-symbol class)
                 :class ,class
 	        ,@(orm--filter-plist options
 				     (list :key))))
     (:has-many `(orm-has-many-assoc
+                 :name ,(orm-assoc--pluralize-symbol class)
                  :class ,class
 	         ,@(orm--filter-plist options
 				      (list :key))))
@@ -178,14 +448,14 @@
   ""
   (pcase type
     (:belongs-to nil)
-    (:has-one nil)
+    (:has-one (orm-assoc--defassoc-has-one table1 table2 options))
     (:has-many (orm-assoc--defassoc-has-many table1 table2 options))
     (:has-and-belongs-to-many (orm-assoc--defassoc-has-and-belongs-to-many table1 table2 options))
     (_ nil)))
 
-(cl-defmethod orm-assoc-get ((obj orm-table) name)
+(defun orm-assoc-get (obj name)
   "Get association NAME of OBJ."
-  (seq-find (lambda (x) (eq name (orm-table-name (orm-assoc-class x)))) (orm-table-associations bolt)))
+  (seq-find (lambda (x) (eq name (orm-assoc-name x))) (orm-table-associations obj)))
 
 ;; (cl-defmethod orm-all ((assoc-pair orm--assoc-pair))
 ;;   "Select from table for class in database."
@@ -247,55 +517,6 @@
 ;; 			  other-primary-key-value))))
 ;;       (_ nil))))
 
-(defun orm-assoc--insert-assoc-row (conn assoc self-primary-key-value other-primary-key-value)
-  "Insert one association row into database."
-  (let ((join-table-name (orm-table-name (orm-assoc-join-table assoc))))
-    (emacsql-with-transaction conn
-      (emacsql conn [:insert :into $i1 :values $v2] join-table-name
-	       ;; TODO: see if this order is a problem
-	       (vector other-primary-key-value
-		       self-primary-key-value)))))
-
-(defun orm-assoc--insert-assoc (conn assoc obj)
-  "Insert entire association into database."
-  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
-	(obj-primary-key (orm-primary-key obj)))
-    (mapcar (lambda (x) (orm-assoc--insert-assoc-row
-			 conn assoc obj-primary-key x))
-	    (when (slot-boundp obj assoc-slot)
-		(slot-value obj assoc-slot)))))
-
-(defun orm-assoc--update-assoc-row (conn assoc self-primary-key-value other-primary-key-value)
-  "Insert one association row into database."
-  (let ((join-table-name (orm-table-name (orm-assoc-join-table assoc))))
-    (emacsql-with-transaction conn
-      (emacsql conn [:insert :into $i1 :values $v2] join-table-name
-	       ;; TODO: see if this order is a problem
-	       (vector other-primary-key-value
-		       self-primary-key-value)))))
-
-(defun orm-assoc--update-assoc (conn assoc obj)
-  "Update entire association in database."
-  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
-	(obj-primary-key (orm-primary-key obj)))
-    ;; Identify deleted association rows
-
-
-    ;; Insert / update remaining assocation rows
-    (mapcar (lambda (x) (orm-assoc--update-assoc-row
-			 conn assoc obj-primary-key x))
-	    (when (slot-boundp obj assoc-slot)
-	      (slot-value obj assoc-slot)))))
-
-(defun orm-assoc--delete-assoc (conn assoc obj)
-  "Handle deletion for association in database."
-  (let ((assoc-slot (orm-table-name (orm-assoc-class assoc)))
-	(obj-primary-key (orm-primary-key obj)))
-    ;; Depending on association's deletion mode (e.g. delete, nullify) handle
-    ;; other items
-    ))
-
-
 ;; TODO: has-one association
 
 ;; (cl-defmethod orm-assoc--insert ((assoc orm-belongs-to) (obj orm-table))
@@ -304,33 +525,33 @@
 
 ;; Interface
 
-(cl-defmethod orm-assoc-insert ((obj1 orm-table) association-name (obj2 orm-table))
+(defun orm-assoc-insert (obj1 association-name obj2)
   "Insert object for association."
   (orm-assoc--insert obj1 (orm-assoc-get obj1 association-name) obj2))
 
-(cl-defmethod orm-assoc-present-p (obj1 orm-table) association-name (obj2 orm-table)
-  ""
-  )
+(defun orm-assoc-present-p (obj1 association-name obj2)
+  "Check if OBJ2 is present in OBJ1's association ASSOCIATION-NAME"
+  (orm-assoc--present-p obj1 (orm-assoc-get obj1 association-name) obj2))
 
-(cl-defmethod orm-assoc-first ((obj orm-table) association-name)
+(defun orm-assoc-first (obj association-name)
   ""
-  )
+  (orm-assoc--first obj1 (orm-assoc-get obj1 association-name) obj2))
 
-(cl-defmethod orm-assoc-all ((obj orm-table) association-name)
+(defun orm-assoc-all (obj association-name)
   ""
   (orm-assoc--all obj (orm-assoc-get obj association-name)))
 
-(cl-defmethod orm-assoc-find ((obj orm-table) association-name)
+(defun orm-assoc-find (obj association-name)
   ""
-  )
+  (orm-assoc--find obj1 (orm-assoc-get obj1 association-name) obj2))
 
-(cl-defmethod orm-assoc-update ((obj1 orm-table) association-name (obj2 orm-table))
+(defun orm-assoc-update (obj1 association-name obj2)
   "Update rows in the association."
-  )
+  (orm-assoc--update obj1 (orm-assoc-get obj1 association-name) obj2))
 
-(cl-defmethod orm-assoc-delete ((obj1 orm-table) association-name (obj2 orm-table))
+(defun orm-assoc-delete (obj1 association-name obj2)
   "Delete rows from the association."
-  )
+  (orm-assoc--delete obj1 (orm-assoc-get obj1 association-name) obj2))
 
 
 (provide 'orm-assoc)
