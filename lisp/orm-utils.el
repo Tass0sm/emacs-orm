@@ -15,6 +15,10 @@
 		  if (member (car x) keys)
 		  collect x)))
 
+(defun orm--plist-get-with-default (plist keys default)
+  (let ((k (cl-find-if (lambda (x) (plist-get plist x)) keys)))
+    (if k (plist-get plist k) default)))
+
 (defun orm--eieio-get-initarg (class slot-name)
   (car (rassoc slot-name (eieio--class-initarg-tuples (eieio--full-class-object class)))))
 
