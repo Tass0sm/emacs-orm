@@ -1,5 +1,6 @@
 ;; (require 'orm-table-tests)
 (require 'orm-crud-tests)
-(require 'orm-assoc-tests)
+
+(require 'orm-habtm-tests)
 
 (provide 'orm-tests)

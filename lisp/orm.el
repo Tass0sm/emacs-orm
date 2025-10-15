@@ -187,9 +187,9 @@
       (emacsql conn (vector :delete-from '$i1 :where (list '= '$i2 primary-key-value))
 	       table-name primary-key)
 
-      ;; Handle deletion for all that is associated with "this"
-      (mapcar (lambda (assoc) (orm-assoc--delete-assoc conn this assoc))
-	      (orm-table-associations this)))))
+      ;; Handle deletion for all that is associated with "obj"
+      (mapcar (lambda (assoc) (orm-assoc--delete-assoc conn obj assoc))
+	      (orm-table-associations obj)))))
 
 
 (provide 'orm)
