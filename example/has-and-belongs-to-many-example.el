@@ -1,5 +1,8 @@
 (require 'orm)
 
+(setq orm-default-db (orm-db :type :sql :file "/tmp/test.db"))
+(setq orm-default-conn (orm-connect orm-default-db))
+
 (deftable part ()
 	  ((name :initarg :name
 		 :primary-key t
@@ -29,27 +32,27 @@
 (setq bolt (part :name "bolt"))
 (setq box (assembly :name "box"))
 
-(orm-assoc-get bolt 'assemblies)
-(orm-assoc-get box 'parts)
+(orm-insert bolt)
+(orm-insert box)
 
-;; (orm-assoc-insert bolt 'assemblies box)
+;; insert
+
+(orm-assoc-insert bolt 'assemblies box)
 ;; OR
 (push box (slot-value bolt 'assemblies))
+(push bolt (slot-value box 'parts))
 (orm-update box)
 
-(orm-assoc-all bolt 'assemblies)
-
-
+;; all
 
 (orm-assoc-all bolt 'assemblies)
 (orm-assoc-all box 'parts)
+(orm-assoc-find bolt 'assemblies "box")
 
-(orm-assoc-update
+;; delete
 
-;; (orm-append (orm-get-assoc bolt 'assemblies) box)
-
-;; (orm-append (orm-get-assoc bolt 'assemblies) "box")
-
-
-;; (orm-all (orm-get-assoc bolt 'assemblies))
-;; ;; (orm-all (orm-get part-assemblies)
+(orm-assoc-delete bolt 'assemblies box)
+;; OR
+(setf (slot-value bolt 'assemblies) nil)
+(setf (slot-value box 'parts) nil)
+(orm-update box)

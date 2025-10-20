@@ -3,41 +3,35 @@
 (setq orm-default-db (orm-db :type :sql :file "/tmp/test.db"))
 (setq orm-default-conn (orm-connect orm-default-db))
 
-(deftable homework ()
-	  ((number :initarg :number
-		   :primary-key t
-		   :not-null t))
-	  :table homeworks)
+(deftable tauthor ()
+          ((name :initarg :name :primary-key t :not-null t))
+          :table tauthors)
 
-(deftable problem ()
-	  ((text :initarg :text
-		 :primary-key t
-		 :not-null t))
-          :table problems
-	  :associations
-	  ((:belongs-to homework :foreign-key homework)))
+(deftable tbook ()
+          ((isbn :initarg :isbn :primary-key t :not-null t))
+          :table tbooks)
 
-(defassoc homework :has-many problem)
+(defconst tauthor-has-many-tbook
+  (defassoc tauthor :has-many tbook))
 
-;; Create
+(orm-drop tauthor)
+(orm-drop tbook)
 
-(orm-create homework)
-(setq hw1 (homework :number 1))
-(orm-insert hw1)
 
-(orm-create problem)
-(setq prob1 (problem :text "Problem 1"))
-(orm-insert prob1)
+(orm-create tauthor)
+(orm-create tbook)
 
-;; check association
+(setq a (tauthor :name "Ursula K. Le Guin"))
+(setq b1 (tbook :isbn "978-0-553-34624-6"))
+(setq b2 (tbook :isbn "978-0-441-78358-8"))
 
-(orm-assoc-get hw1 'problems)
-(orm-assoc-get prob1 'homework)
+(orm-insert a)
+(orm-insert b1)
+(orm-insert b2)
 
-;; Associate
-
-(orm-assoc-insert hw1 'problems prob1)
-
-;; Read
-
-(orm-assoc-all hw1 'problems)
+;; Link b1 and b2 to a
+(orm-assoc-insert a 'tbooks b1)
+;; OR
+(push b1 (slot-value a 'tbooks))
+(setf (slot-value b1 'tauthor) a)
+(orm-update b1)

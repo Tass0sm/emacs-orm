@@ -3,38 +3,32 @@
 (setq orm-default-db (orm-db :type :sql :file "/tmp/test.db"))
 (setq orm-default-conn (orm-connect orm-default-db))
 
-(deftable user ()
-	  ((name :initarg :name
-		 :primary-key t
-		 :not-null t))
-	  :table users)
+(deftable tperson ()
+          ((name :initarg :name :primary-key t :not-null t))
+          :table tpersons)
 
-(deftable profile ()
-	  ((alias :initarg :alias
-		  :primary-key t
-		  :not-null t))
-	  :associations
-	  ((:belongs-to user :foreign-key user)))
+(deftable tidcard ()
+          ((idnum :initarg :idnum :primary-key t :not-null t))
+          :table tidcards)
 
-(defassoc user :has-one profile)
+(defconst tperson-has-one-tidcard
+  (defassoc tperson :has-one tidcard))
 
-;; Create
+(orm-create tperson)
+(orm-create tidcard)
 
-(orm-create user)
-(setq tassos (user :name "Tassos"))
-(orm-insert tassos)
+(setq p  (tperson :name "Grace"))
+(setq c1 (tidcard :idnum "ID-001"))
+(setq c2 (tidcard :idnum "ID-002"))
 
-(orm-create profile)
-(setq tassos-profile (profile :alias "Tass0sm"))
-(orm-insert tassos-profile)
+(orm-insert p)
+(orm-insert c1)
+(orm-insert c2)
 
-;; check association
+;; insert
 
-(orm-assoc-get profile 'user)
-(orm-assoc-get user 'profile)
+(orm-assoc-insert p 'tidcard c2)
 
-;; Associate
+;; delete
 
-(orm-assoc-insert tassos 'profile tassos-profile)
-
-;; Read
+(orm-assoc-delete p 'tidcard c2)
