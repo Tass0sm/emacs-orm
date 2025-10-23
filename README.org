@@ -51,8 +51,8 @@ Delete rows from the table
 
 ** Associations
 
-Define =belongs-to=, =has-many=, and =has-and-belongs-to-many= associations
-between table-mapped objects.
+Define =belongs-to=, =has-one=, =has-many=, and =has-and-belongs-to-many=
+associations between table-mapped objects.
 
 : (defassoc table1 type table2 &rest options)
 
@@ -76,10 +76,6 @@ Check for and read rows from the association.
 : (orm-assoc-first (obj orm-table) association-name)
 : (orm-assoc-all (obj orm-table) association-name)
 : (orm-assoc-find (obj orm-table) association-name)
-
-Update rows in the association.
-
-: (orm-assoc-update (obj1 orm-table) association-name (obj2 orm-table))
 
 Delete rows from the association.
 
