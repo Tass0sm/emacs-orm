@@ -15,8 +15,10 @@
 
 (cl-defmethod orm-primary-key ((table orm-table))
   "Get primary key of orm-table object instance TABLE"
-  (let ((table-primary-key (aref (orm-table-primary-key (type-of table)) 0)))
-    (slot-value table table-primary-key)))
+  (let ((table-primary-key (orm-table-primary-key (type-of table))))
+    (if (> (length table-primary-key) 1)
+        (mapcar (lambda (k) (slot-value table k)) table-primary-key)
+      (slot-value table (aref table-primary-key 0)))))
 
 (cl-defmethod orm-column-names ((table orm-table))
   "Get table column names"
@@ -28,7 +30,7 @@
   (orm-column-names (make-instance table)))
 
 (defun orm--symbol-to-keyword (sym)
-  (intern (concat ":" (symbol-name sym))))
+  (intern (concat ":" (string-replace "_" "-" (symbol-name sym)))))
 
 ;; Static Methods
 

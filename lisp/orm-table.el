@@ -48,8 +48,11 @@
   "Get class primary key name"
   (let* ((obj (make-instance table))
 	 (cols (orm-table-columns obj))
-	 (pk-cols (cl-remove-if-not (lambda (x) (oref x primary-key)) cols)))
-    (when-let ((names (mapcar (lambda (x) (oref x name)) pk-cols)))
+	 (pk-cols (cl-remove-if-not (lambda (x) (oref x primary-key)) cols))
+         (ck-cols (cl-remove-if-not (lambda (x) (oref x composite-key)) cols)))
+    (when (and pk-cols ck-cols)
+      (error "Shouldn't have both primary key columns and composite key columns"))
+    (when-let ((names (mapcar (lambda (x) (oref x name)) (or pk-cols ck-cols))))
       (apply 'vector names))))
 
 (cl-defmethod orm-table-primary-key ((table string))

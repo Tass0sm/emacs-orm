@@ -10,6 +10,8 @@
 	   :initform nil)
    (primary-key :initarg :primary-key
 		:initform nil)
+   (composite-key :initarg :composite-key
+		  :initform nil)
    (foreign-key :initarg :foreign-key
 		:initform nil)
    (not-null :initarg :not-null
