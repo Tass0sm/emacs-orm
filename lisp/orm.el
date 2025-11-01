@@ -32,6 +32,42 @@
 (defun orm--symbol-to-keyword (sym)
   (intern (concat ":" (string-replace "_" "-" (symbol-name sym)))))
 
+(defun orm--make-list (x)
+  (cond
+   ((vectorp x) (append x nil))
+   ((listp x) x)
+   ((atom x) (cons x nil))
+   (t nil)))
+
+(defun orm--quote-list (x)
+  (mapcar (lambda (x) `(quote ,x)) x))
+
+(defun orm--interleave (l1 l2)
+  (when (and l1 l2)
+    (cons (car l1) (cons (car l2) (orm--interleave (cdr l1) (cdr l2))))))
+
+(defun orm--equalities (n i)
+  (if (or (< n 1) (< i 0))
+      (error "Invalid value")
+    (let ((next `(= ,(intern (format "$i%s" i)) ,(intern (format "$s%s" (+ i 1))))))
+      (if (= n 1)
+          next
+        (list next (orm--equalities (- n 1) (+ i 2)))))))
+
+(defun orm--and-equalities (n i)
+  (if (or (< n 1) (< i 0))
+      (error "Invalid value")
+    (if (= n 1)
+        (orm--equalities n i)
+      (cons 'and (orm--equalities n i)))))
+
+(defun orm--and-equalities (n i)
+  (if (or (< n 1) (< i 0))
+      (error "Invalid value")
+    (if (= n 1)
+        (orm--equalities n i)
+      (cons 'and (orm--equalities n i)))))
+
 ;; Static Methods
 
 (cl-defmethod orm-count ((table (subclass orm-table)))
@@ -100,10 +136,6 @@
 
 ;; Read - orm-all, orm-first
 
-(defun orm--interleave (l1 l2)
-  (when (and l1 l2)
-    (cons (car l1) (cons (car l2) (orm--interleave (cdr l1) (cdr l2))))))
-
 (cl-defmethod orm--make-from-record ((table (subclass orm-table)) record)
   (let ((obj (apply 'make-instance (cons table (orm--interleave (mapcar 'orm--symbol-to-keyword (orm-column-names table)) record)))))
     ;; (mapcar (lambda (assoc) (setf (slot-value obj (orm-assoc-name assoc))
@@ -146,7 +178,7 @@
 	 (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
 	 (primary-key-value (slot-value obj primary-key))
 	 (record (car (emacsql-with-transaction conn
-			(emacsql conn (vector :select :1 :from '$S1 :where (list '= '$i2 '$s3))
+                        (emacsql conn (vector :select :1 :from '$S1 :where (list '= '$i2 '$s3))
 				 (vector table-name) primary-key primary-key-value)))))
     record))
 
@@ -189,11 +221,14 @@
   "Delete object in database."
   (let* ((conn orm-default-conn)
 	 (table-name (orm-table-name obj))
-	 (primary-key (aref (orm-table-primary-key (class-of obj)) 0))
-	 (primary-key-value (slot-value obj primary-key)))
+	 (primary-key (orm-table-primary-key (class-of obj)))
+	 (primary-key-value (orm-primary-key obj)))
     (emacsql-with-transaction conn
-      (emacsql conn (vector :delete-from '$i1 :where (list '= '$i2 primary-key-value))
-	       table-name primary-key)
+      (eval
+       `(emacsql conn [:delete-from $i1 :where ,(orm--and-equalities (length primary-key) 2)]
+	         table-name ,@(orm--interleave
+                               (orm--quote-list (orm--make-list primary-key))
+                               (orm--make-list primary-key-value))))
 
       (unless skip-assocs
         ;; Handle deletion for all that is associated with "obj"

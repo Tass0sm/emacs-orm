@@ -59,7 +59,7 @@
     ;; forms to identify themselves as part of the primary key
     (when-let ((pk-constraint (assoc :primary-key table-constraints)))
       (mapcar (lambda (x)
-                (let ((col-form (orm-macros--find-col-form-by-name columns x)))
+                (when-let ((col-form (orm-macros--find-col-form-by-name columns x)))
                   (cl-callf plist-put (cdr col-form) :composite-key t)))
               (cadr pk-constraint)))
 
