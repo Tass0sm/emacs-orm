@@ -36,7 +36,7 @@
   "A class for associations of an relation-mapped class.")
 
 
-(cl-defgeneric orm-assoc--insert (obj1 assoc obj2)
+(cl-defgeneric orm-assoc--insert (obj1 assoc obj2 extras-plist)
   "insert")
 
 (cl-defgeneric orm-assoc--present-p (obj1 assoc obj2)
@@ -137,7 +137,7 @@
     (when (orm-present-p obj)
       (orm-delete obj))))
 
-(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-belongs-to-assoc) (obj2 orm-table))
+(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-belongs-to-assoc) (obj2 orm-table) _)
   "Insert object for belongs-to association"
   (let ((conn orm-default-conn))
     (setf (slot-value obj1 (orm-assoc-name assoc)) obj2)
@@ -260,7 +260,7 @@
       (setf (slot-value other (orm-assoc-key assoc)) nil)
       (orm-delete other))))
 
-(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-one-assoc) (obj2 orm-table))
+(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-one-assoc) (obj2 orm-table) _)
   "Insert object for has-one association"
   (let ((conn orm-default-conn)
         (previous-ownee (slot-value obj1 (orm-assoc-name assoc)))
@@ -418,7 +418,7 @@
     ;; Delete objects in database
     (mapcar (lambda (x) (orm-delete x :skip-assocs t)) in-db)))
 
-(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-many-assoc) (obj2 orm-table))
+(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-many-assoc) (obj2 orm-table) _)
   "Insert object for has-many association"
   (let ((conn orm-default-conn)
         (previous-owner (slot-value obj2 (orm-assoc-reverse-name assoc))))
@@ -511,16 +511,24 @@
         (x-obj (if (orm-assoc--orm-obj-p x) x (car x)))
         (y-obj (if (orm-assoc--orm-obj-p y) y (car y))))
     (if (eq (orm-assoc-class1 assoc) (type-of x-obj))
+        (let ((extras-plist (unless (orm-assoc--orm-obj-p x) (cdr x))))
+          (apply 'make-instance
+                 (append (list jt kw1 (orm-primary-key x-obj) kw2 (orm-primary-key y-obj))
+                         extras-plist)))
+      (let ((extras-plist (unless (orm-assoc--orm-obj-p y) (cdr y))))
         (apply 'make-instance
-               (list jt kw1 (orm-primary-key x-obj) kw2 (orm-primary-key y-obj)))
-      (apply 'make-instance
-             (list jt kw1 (orm-primary-key y-obj) kw2 (orm-primary-key x-obj))))))
-
+               (append (list jt kw1 (orm-primary-key y-obj) kw2 (orm-primary-key x-obj))
+                       extras-plist))))))
 
 ;; Aux Tables
 (defun orm-assoc--get-join-table-name (table-name class)
   (let ((sorted-names (sort (list table-name class) (lambda (x y) (compare-strings x nil nil y nil nil)))))
     (intern (format "%s-%s" (car sorted-names) (cadr sorted-names)))))
+
+(defun orm-assoc--join-table-extra-props (join-table fks)
+  (mapcar 'orm-column-name
+          (cl-remove-if (lambda (x) (member (orm-column-name x) fks))
+                        (orm-table-columns join-table))))
 
 (defun orm-assoc--define-has-and-belongs-to-many-aux-table (table1 name1 table2 name2 options)
   "Get auxiliary table for has-and-belongs-to-many"
@@ -607,18 +615,13 @@
 
     (mapcar (lambda (x) (orm-delete (orm-assoc--make-join-table-row assoc obj x) :skip-assocs t)) in-db)))
 
-(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-and-belongs-to-many-assoc) (obj2 orm-table))
+(cl-defmethod orm-assoc--insert ((obj1 orm-table) (assoc orm-has-and-belongs-to-many-assoc) (obj2 orm-table) extras-plist)
   "Insert object for has-and-belongs-to-many association"
-  (let* ((conn orm-default-conn)
-	 (obj-primary-key (aref (orm-table-primary-key (type-of obj1)) 0))
-	 (obj-primary-key-value (slot-value obj1 obj-primary-key))
-	 (other-primary-key (aref (orm-table-primary-key (type-of obj2)) 0))
-	 (other-primary-key-value (slot-value obj2 other-primary-key))
-	 (join-table-name (orm-table-name (orm-assoc-join-table assoc))))
+  (let ((conn orm-default-conn))
     (orm-insert-or-update obj1 :skip-assocs t)
     (orm-insert-or-update obj2 :skip-assocs t)
-    (push obj2 (slot-value obj1 (orm-table-name obj2)))
-    (push obj1 (slot-value obj2 (orm-table-name obj1)))
+    (push (cons obj2 extras-plist) (slot-value obj1 (orm-table-name obj2)))
+    (push (cons obj1 extras-plist) (slot-value obj2 (orm-table-name obj1)))
     (orm-assoc--insert-assoc conn obj1 assoc)))
 
 (cl-defmethod orm-assoc--present-p ((obj1 orm-table) (assoc orm-has-and-belongs-to-many-assoc) (obj2 orm-table))
@@ -637,28 +640,38 @@
 (cl-defmethod orm-assoc--all ((obj orm-table) (assoc orm-has-and-belongs-to-many-assoc))
   "Find all objects for has-and-belongs-to-many association"
   (let* ((conn orm-default-conn)
-	 (other (orm-assoc-class assoc))
+	 (other-table (orm-assoc-class assoc))
+	 (other-table-name (orm-table-name other-table))
 	 ;; primary key for self table
-	 (obj-primary-key (aref (orm-table-primary-key (type-of obj)) 0))
-	 (obj-primary-key-value (slot-value obj obj-primary-key))
+         (self-table (type-of obj))
+	 (self-table-name (orm-table-name self-table))
+	 (self-pk (aref (orm-table-primary-key self-table) 0))
+	 (self-pkv (orm-primary-key obj))
 	 ;; primary key for other table
-	 (other-primary-key (aref (orm-table-primary-key other) 0))
-	 (other-table-name (orm-table-name other))
+	 (other-pk (aref (orm-table-primary-key other-table) 0))
          ;; join table keys
-         (join-table-name (orm-table-name (orm-assoc-join-table assoc)))
-         (join-table-columns (orm-column-names (orm-assoc-join-table assoc)))
-	 (obj-join-table-key (intern (format "%s-id" (orm-table-name (type-of obj)))))
-	 (other-join-table-key (intern (format "%s-id" (orm-table-name other)))))
-    (mapcar (lambda (r) (orm--make-from-record other r))
-            (emacsql-with-transaction conn
-              (emacsql conn [:select :* :from $i1 :where $i2 :in
-        		             [:select $i3 :from $i4 :where (= $i5 $s6)]]
-                       other-table-name
-                       other-primary-key
-                       other-join-table-key
-                       join-table-name
-                       obj-join-table-key
-                       obj-primary-key-value)))))
+         (j-table (orm-assoc-join-table assoc))
+         (j-table-name (orm-table-name j-table))
+	 (j-table-obj-key (intern (format "%s-id" self-table-name)))
+	 (j-table-other-key (intern (format "%s-id" other-table-name)))
+         (j-table-extra-properties
+          (orm-assoc--join-table-extra-props j-table (list j-table-obj-key j-table-other-key))))
+    (let ((rs (emacsql-with-transaction orm-default-conn
+                (emacsql orm-default-conn
+                         `[:select [o:* ,@(mapcar (lambda (x) (orm--qual 'j x)) j-table-extra-properties)]
+                                   :from (as ,other-table-name o)
+                                   :join (as ,j-table-name j)
+                                   :on (= ,(orm--qual 'j j-table-other-key) ,(orm--qual 'o other-pk))
+                                   :where (= ,(orm--qual 'j j-table-obj-key) $s1)]
+                         self-pkv))))
+      (if (= (length j-table-extra-properties) 0)
+          (mapcar (lambda (r) (orm--make-from-record other-table r)) rs)
+        (mapcar (lambda (r)
+                  (cons (orm--make-from-record other-table
+                                               (cl-subseq r 0 (length (orm-table-columns other-table))))
+                        (orm--interleave (mapcar 'orm--symbol-to-keyword j-table-extra-properties)
+                                         (cl-subseq r (length (orm-table-columns other-table))))))
+                rs)))))
 
 (cl-defmethod orm-assoc--find ((obj orm-table) (assoc orm-has-and-belongs-to-many-assoc) id)
   "Find objects by id for has-and-belongs-to-many association"
@@ -739,9 +752,9 @@
 
 ;; Interface
 
-(defun orm-assoc-insert (obj1 association-name obj2)
+(defun orm-assoc-insert (obj1 association-name obj2 &rest extras-plist)
   "Insert object for association."
-  (orm-assoc--insert obj1 (orm-assoc-get obj1 association-name) obj2))
+  (orm-assoc--insert obj1 (orm-assoc-get obj1 association-name) obj2 extras-plist))
 
 (defun orm-assoc-present-p (obj1 association-name obj2)
   "Check if OBJ2 is present in OBJ1's association ASSOCIATION-NAME"

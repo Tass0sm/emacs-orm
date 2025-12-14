@@ -4,7 +4,8 @@
 (require 'eieio)
 
 (defclass orm-column ()
-  ((name :initarg :name)
+  ((name :initarg :name
+         :accessor orm-column-name)
    (type :initarg :type)
    (unique :initarg :unique
 	   :initform nil)

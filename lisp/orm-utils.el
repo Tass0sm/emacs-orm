@@ -19,6 +19,22 @@
   (let ((k (cl-find-if (lambda (x) (plist-get plist x)) keys)))
     (if k (plist-get plist k) default)))
 
+(defun orm--qual (alias col)
+  "Build a qualified emacsql column symbol like j:foo."
+  (intern (format "%s:%s" alias col)))
+
+(defun orm--partition-at-idx (ls idx)
+  "partition list of lists LS into two lists of lists. In the first
+list, each element at index i is made up of the elements before
+index IDX in the i-th input list. The second list is the same
+with the elements after index IDX."
+  (if ls
+      (let ((rest (orm--partition-at-idx (cdr ls) idx)))
+        (list
+         (cons (cl-subseq (car ls) 0 idx) (car rest))
+         (cons (cl-subseq (car ls) idx) (cadr rest))))
+    (list nil nil)))
+
 (defun orm--eieio-get-initarg (class slot-name)
   (car (rassoc slot-name (eieio--class-initarg-tuples (eieio--full-class-object class)))))
 
