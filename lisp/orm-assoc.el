@@ -9,10 +9,19 @@
 (defun orm-assoc--two-obj-test (x y)
   (equal (if (orm-assoc--orm-obj-p x)
              (orm-primary-key x)
-           (car (orm-primary-key x)))
+           (orm-primary-key (car x)))
          (if (orm-assoc--orm-obj-p y)
              (orm-primary-key y)
-           (car (orm-primary-key y)))))
+           (orm-primary-key (car y)))))
+
+(defun orm-assoc--one-obj-test (obj)
+  (lambda (x)
+    (equal (if (orm-assoc--orm-obj-p x)
+               (orm-primary-key x)
+             (orm-primary-key (car x)))
+           (if (orm-assoc--orm-obj-p obj)
+               (orm-primary-key obj)
+             (orm-primary-key (car obj))))))
 
 ;; association class
 
@@ -431,7 +440,7 @@
   (let ((conn orm-default-conn)
         (obj1-ys (slot-value obj1 (orm-assoc-name assoc))))
       (setf (slot-value obj1 (orm-assoc-name assoc))
-            (cl-remove-if (lambda (y) (equal (orm-primary-key obj2) (orm-primary-key y))) obj1-ys))
+            (cl-remove-if (orm-assoc--one-obj-test obj2) obj1-ys))
       (setf (slot-value obj2 (orm-assoc-reverse-name assoc)) nil)
       (orm-assoc--update-assoc conn obj1 assoc)))
 
@@ -589,8 +598,9 @@
         (in-obj (slot-value obj (orm-assoc-name assoc))))
 
     (mapcar (lambda (x)
-              (when (cl-member-if (lambda (y) (equal (orm-primary-key x) (orm-primary-key y))) in-db)
-                (setf (slot-value x (orm-assoc-reverse-name assoc)) nil)))
+              (let ((x-obj (if (orm-assoc--orm-obj-p x) x (car x))))
+                (when (cl-member-if (orm-assoc--one-obj-test x-obj) in-db)
+                  (setf (slot-value x-obj (orm-assoc-reverse-name assoc)) nil))))
             in-obj)
 
     (setf (slot-value obj (orm-assoc-name assoc)) nil)
@@ -682,11 +692,10 @@
         (obj1-ys (slot-value obj1 (orm-assoc-name assoc)))
         (obj2-xs (slot-value obj2 (orm-assoc-reverse-name assoc))))
     (setf (slot-value obj1 (orm-assoc-name assoc))
-          (cl-remove-if (lambda (y) (equal (orm-primary-key obj2) (orm-primary-key y))) obj1-ys))
+          (cl-remove-if (orm-assoc--one-obj-test obj2) obj1-ys))
     (setf (slot-value obj2 (orm-assoc-reverse-name assoc))
-          (cl-remove-if (lambda (x) (equal (orm-primary-key x) (orm-primary-key obj1))) obj2-xs))
+          (cl-remove-if (orm-assoc--one-obj-test obj1) obj2-xs))
     (orm-assoc--update-assoc conn obj1 assoc)))
-
 
                                         ; general utilities
 
