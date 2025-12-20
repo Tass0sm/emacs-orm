@@ -676,28 +676,42 @@
 (cl-defmethod orm-assoc--find ((obj orm-table) (assoc orm-has-and-belongs-to-many-assoc) id)
   "Find objects by id for has-and-belongs-to-many association"
   (let* ((conn orm-default-conn)
-         ;; Other class info
-         (other (orm-assoc-class assoc))
-         (other-table-name (orm-table-name other))
-         (other-primary-key (aref (orm-table-primary-key other) 0))
-         (other-join-table-key (intern (format "%s-id" (orm-table-name other))))
-         ;; Join table info
-	 (join-table-name (orm-table-name (orm-assoc-join-table assoc)))
-	 (key1 (orm-assoc-key1 assoc))
+	 (other-table (orm-assoc-class assoc))
+	 (other-table-name (orm-table-name other-table))
+	 ;; primary key for self table
+         (self-table (type-of obj))
+	 (self-table-name (orm-table-name self-table))
+	 (self-pk (aref (orm-table-primary-key self-table) 0))
+	 (self-pkv (orm-primary-key obj))
+	 ;; primary key for other table
+	 (other-pk (aref (orm-table-primary-key other-table) 0))
+         ;; join table keys
+         (j-table (orm-assoc-join-table assoc))
+         (j-table-name (orm-table-name j-table))
+	 (j-table-obj-key (intern (format "%s-id" self-table-name)))
+	 (j-table-other-key (intern (format "%s-id" other-table-name)))
+         (j-table-extra-properties
+          (orm-assoc--join-table-extra-props j-table (list j-table-obj-key j-table-other-key)))
+         (key1 (orm-assoc-key1 assoc))
          (key2 (orm-assoc-key2 assoc))
          (value-pair (if (eq (orm-assoc-class1 assoc) (type-of obj))
                          (cons (orm-primary-key obj) id)
                        (cons id (orm-primary-key obj)))))
-    (let ((record (car (emacsql-with-transaction conn
-                         (emacsql conn [:select :* :from $i1 :where $i2 :in
-                                                [:select $i3 :from $i4 :where (and (= $i5 $s6) (= $i7 $s8))]]
-                                  other-table-name
-	                          other-primary-key
-	                          other-join-table-key
-                                  join-table-name
-                                  key1 (car value-pair)
-                                  key2 (cdr value-pair))))))
-      (orm--make-from-record other record))))
+    (let ((record (car (emacsql-with-transaction orm-default-conn
+                         (emacsql orm-default-conn
+                                  `[:select [o:* ,@(mapcar (lambda (x) (orm--qual 'j x)) j-table-extra-properties)]
+                                            :from (as ,other-table-name o)
+                                            :join (as ,j-table-name j)
+                                            :on (= ,(orm--qual 'j j-table-other-key) ,(orm--qual 'o other-pk))
+                                            :where (and (= ,(orm--qual 'j key1) $s1)
+                                                        (= ,(orm--qual 'j key2) $s2))]
+                                  (car value-pair) (cdr value-pair))))))
+      (if (= (length j-table-extra-properties) 0)
+          (orm--make-from-record other-table record)
+        (cons (orm--make-from-record other-table
+                                     (cl-subseq record 0 (length (orm-table-columns other-table))))
+              (orm--interleave (mapcar 'orm--symbol-to-keyword j-table-extra-properties)
+                               (cl-subseq record (length (orm-table-columns other-table)))))))))
 
 (cl-defmethod orm-assoc--delete ((obj1 orm-table) (assoc orm-has-and-belongs-to-many-assoc) (obj2 orm-table))
   "Delete object in has-and-belongs-to-many association"

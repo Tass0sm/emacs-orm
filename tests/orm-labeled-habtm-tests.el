@@ -114,14 +114,82 @@
             ;; Find by key (HABTM usually uses the other table's PK)
             (let ((found-recipe (orm-assoc-find graham-crackers 'trecipes "Banana Pudding"))
                   (found-ingredient (orm-assoc-find banana-pudding 'tingredients "Graham Crackers")))
-              (should (and found-recipe (object-of-class-p found-recipe 'trecipe)))
-              (should (and found-ingredient (object-of-class-p found-ingredient 'tingredient)))))
+              (should (and found-recipe (object-of-class-p (car found-recipe) 'trecipe)))
+              (should (equal (plist-get (cdr found-recipe) :quantity) 1))
+              (should (equal (plist-get (cdr found-recipe) :unit) "package"))
+              (should (and found-ingredient (object-of-class-p (car found-ingredient) 'tingredient)))
+              (should (equal (plist-get (cdr found-ingredient) :quantity) 1))
+              (should (equal (plist-get (cdr found-ingredient) :unit) "package"))))
           ;; Idempotent insert shouldn’t duplicate rows
           (let* ((banana-pudding (orm-find trecipe "Banana Pudding"))
                  (graham-crackers (orm-find tingredient "Graham Crackers")))
             (orm-assoc-insert banana-pudding 'tingredients graham-crackers)
             (should (equal (length (orm-assoc-all banana-pudding 'tingredients)) 1))
             (should (equal (length (orm-assoc-all graham-crackers 'trecipes)) 1))))
+      (orm--teardown-db db-file))))
+
+(ert-deftest orm-labeled-habtm-insert-via-slot-mutation-and-update ()
+  "Create/delete association by mutating slots and calling orm-update."
+  (let* ((db (orm--make-temp-db))
+         (db-file (car db)))
+    (unwind-protect
+        (progn
+          (orm--create-labeled-habtm-schema)
+
+          (let* ((banana-pudding (trecipe :name "Banana Pudding"))
+                 (graham-crackers (tingredient :name "Graham Crackers")))
+            (orm-insert banana-pudding)
+            (orm-insert graham-crackers)
+
+            ;; Add by mutating both sides then updating one side
+            (push (list graham-crackers :quantity 1 :unit "package") (slot-value banana-pudding 'tingredients))
+            (orm-update banana-pudding)
+
+            (should (orm-assoc-present-p banana-pudding 'tingredients graham-crackers))
+            (should (orm-assoc-present-p graham-crackers 'trecipes banana-pudding))
+            (should (equal (length (orm-assoc-all graham-crackers 'trecipes)) 1))
+            (should (equal (length (orm-assoc-all banana-pudding 'tingredients)) 1))
+
+            ;; Remove by clearing slots then updating
+            (setf (slot-value banana-pudding 'tingredients) nil)
+            (orm-update banana-pudding)
+
+            (should (equal (length (orm-assoc-all graham-crackers 'trecipes)) 0))
+            (should (equal (length (orm-assoc-all banana-pudding 'tingredients)) 0))))
+      (orm--teardown-db db-file))))
+
+(ert-deftest orm-labeled-habtm-delete-and-cascade-cleanup ()
+  "Delete association directly and ensure object deletion cleans join rows."
+  (let* ((db (orm--make-temp-db))
+         (db-file (car db)))
+    (unwind-protect
+        (progn
+          (orm--create-labeled-habtm-schema)
+
+          (let* ((sandwich (trecipe :name "Sandwich"))
+                 (ham  (tingredient :name "Ham"))
+                 (cheese  (tingredient :name "Cheese")))
+            (orm-insert sandwich)
+            (orm-insert ham)
+            (orm-insert cheese)
+
+            ;; sandwich <-> ham, sandwich <-> cheese
+            (orm-assoc-insert sandwich 'tingredients ham :quantity 1 :unit "slice")
+            (orm-assoc-insert sandwich 'tingredients cheese :quantity 1 :unit "slice")
+            (should (equal (length (orm-assoc-all sandwich 'tingredients)) 2))
+
+            ;; Delete single link
+            (orm-assoc-delete sandwich 'tingredients ham)
+            (should (not (orm-assoc-present-p sandwich 'tingredients ham)))
+            (should (orm-assoc-present-p sandwich 'tingredients cheese))
+            (should (equal (length (orm-assoc-all sandwich 'tingredients)) 1))
+
+            ;; Delete object 'cheese' and ensure join rows are cleaned,
+            ;; but 'sandwich' and 'ham' still exists.
+            (orm-delete cheese)
+            (should (equal (length (orm-assoc-all sandwich 'tingredients)) 0))
+            (should (orm-present-p ham))
+            (should (orm-present-p sandwich))))
       (orm--teardown-db db-file))))
 
 (provide 'orm-labeled-habtm-tests)
